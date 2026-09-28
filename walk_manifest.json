@@ -1,0 +1,293 @@
+{
+  "version": "1.0",
+  "export_time": "2026-09-07T13:35:14Z",
+  "tool_version": "0.1.0",
+  "source": {
+    "maya_scene": "Standard Walk",
+    "maya_version": "2022",
+    "preset": "ue_mannequin",
+    "skeleton_root": "|mixamorig:Hips"
+  },
+  "convention": {
+    "up_axis": "y",
+    "unit": "cm",
+    "frame_rate": 30,
+    "axis_conversion": false
+  },
+  "clips": [
+    {
+      "name": "new_clip",
+      "start": 0,
+      "end": 35,
+      "root_motion": false
+    }
+  ],
+  "fbx_path": "D:\\tool_code\\walk.fbx",
+  "ue_destination": {
+    "content_root": "/Game/Animations",
+    "skeleton_path": "/Game/Animations/walk_Skeleton",
+    "overwrite_policy": "rename",
+    "skeleton_delivery": {
+      "include_rig": true,
+      "create_if_missing": true,
+      "import_uniform_scale": 1.0,
+      "mesh_asset_name": ""
+    }
+  },
+  "validation": {
+    "status": "passed_with_warnings",
+    "errors": 0,
+    "warnings": 1,
+    "infos": 0,
+    "results": [
+      {
+        "check": "scene.fps",
+        "level": "error",
+        "passed": true,
+        "message": "fps = 30",
+        "auto_fixable": false,
+        "skipped": false
+      },
+      {
+        "check": "scene.timeline_range",
+        "level": "warning",
+        "passed": true,
+        "message": "timeline 0-272",
+        "auto_fixable": false,
+        "skipped": false
+      },
+      {
+        "check": "scene.unit",
+        "level": "error",
+        "passed": true,
+        "message": "unit = cm",
+        "auto_fixable": false,
+        "skipped": false
+      },
+      {
+        "check": "scene.up_axis",
+        "level": "info",
+        "passed": true,
+        "message": "scene up axis = y (preserved during export)",
+        "auto_fixable": false,
+        "skipped": false
+      },
+      {
+        "check": "skeleton.bind_pose",
+        "level": "warning",
+        "passed": true,
+        "message": "当前预设没有手臂骨骼映射，量不出姿势，跳过",
+        "auto_fixable": false,
+        "skipped": false
+      },
+      {
+        "check": "skeleton.duplicate_names",
+        "level": "error",
+        "passed": true,
+        "message": "65 根骨骼名字唯一",
+        "auto_fixable": false,
+        "skipped": false
+      },
+      {
+        "check": "skeleton.naming",
+        "level": "warning",
+        "passed": false,
+        "message": "65 根骨骼名字不符合预设 ue_mannequin 的规则 —— 若骨架本身没问题，先确认右上角预设选对了",
+        "auto_fixable": false,
+        "skipped": false
+      },
+      {
+        "check": "skeleton.real_world_scale",
+        "level": "warning",
+        "passed": true,
+        "message": "骨架高度 177.9 cm，尺寸合理",
+        "auto_fixable": false,
+        "skipped": false
+      },
+      {
+        "check": "skeleton.root_exists",
+        "level": "error",
+        "passed": true,
+        "message": "根骨骼 = |mixamorig:Hips",
+        "auto_fixable": false,
+        "skipped": false
+      },
+      {
+        "check": "skeleton.scale",
+        "level": "warning",
+        "passed": true,
+        "message": "all 65 joints have unit scale",
+        "auto_fixable": false,
+        "skipped": false
+      },
+      {
+        "check": "skeleton.segment_scale",
+        "level": "warning",
+        "passed": true,
+        "message": "没有骨骼使用 segmentScaleCompensate",
+        "auto_fixable": false,
+        "skipped": false
+      },
+      {
+        "check": "skeleton.single_root",
+        "level": "error",
+        "passed": true,
+        "message": "导出根骨架只有一个根节点",
+        "auto_fixable": false,
+        "skipped": false
+      },
+      {
+        "check": "mesh.history",
+        "level": "info",
+        "passed": true,
+        "message": "1 个网格历史正常（蒙皮变形器已保留）",
+        "auto_fixable": false,
+        "skipped": false
+      },
+      {
+        "check": "mesh.skin_weight",
+        "level": "warning",
+        "passed": true,
+        "message": "all 1 meshes have normalized weights",
+        "auto_fixable": false,
+        "skipped": false
+      },
+      {
+        "check": "mesh.transforms",
+        "level": "info",
+        "passed": true,
+        "message": "1 个网格变换正常（蒙皮网格已跳过）",
+        "auto_fixable": false,
+        "skipped": false
+      },
+      {
+        "check": "mesh.uv",
+        "level": "info",
+        "passed": true,
+        "message": "all 1 meshes have UVs",
+        "auto_fixable": false,
+        "skipped": false
+      },
+      {
+        "check": "anim.clip_overlap",
+        "level": "warning",
+        "passed": true,
+        "message": "1 个片段区间互不重叠",
+        "auto_fixable": false,
+        "skipped": false
+      },
+      {
+        "check": "anim.clip_ranges_valid",
+        "level": "error",
+        "passed": true,
+        "message": "1 clip(s) with valid ranges",
+        "auto_fixable": false,
+        "skipped": false
+      },
+      {
+        "check": "anim.curves_on_expected",
+        "level": "info",
+        "passed": true,
+        "message": "all inspected animation curves drive joints",
+        "auto_fixable": false,
+        "skipped": false
+      },
+      {
+        "check": "anim.keys_dense",
+        "level": "warning",
+        "passed": true,
+        "message": "key thinning enabled",
+        "auto_fixable": false,
+        "skipped": false
+      },
+      {
+        "check": "anim.keys_in_clip_range",
+        "level": "warning",
+        "passed": true,
+        "message": "关键帧都落在片段范围内",
+        "auto_fixable": false,
+        "skipped": false
+      },
+      {
+        "check": "anim.root_motion_match",
+        "level": "info",
+        "passed": true,
+        "message": "root_motion flags look consistent",
+        "auto_fixable": false,
+        "skipped": false
+      },
+      {
+        "check": "anim.skeleton_animated",
+        "level": "error",
+        "passed": true,
+        "message": "52/65 根骨骼带动画",
+        "auto_fixable": false,
+        "skipped": false
+      },
+      {
+        "check": "anim.stray_layers",
+        "level": "info",
+        "passed": true,
+        "message": "no stray animation layers",
+        "auto_fixable": false,
+        "skipped": false
+      },
+      {
+        "check": "export.fbx_plugin",
+        "level": "error",
+        "passed": true,
+        "message": "FBX plugin loaded",
+        "auto_fixable": false,
+        "skipped": false
+      },
+      {
+        "check": "export.naming_legal",
+        "level": "error",
+        "passed": true,
+        "message": "all clip names are legal",
+        "auto_fixable": false,
+        "skipped": false
+      },
+      {
+        "check": "export.path_valid",
+        "level": "error",
+        "passed": true,
+        "message": "导出到：D:\\tool_code\\walk.fbx",
+        "auto_fixable": true,
+        "skipped": false
+      },
+      {
+        "check": "export.skeleton_root_set",
+        "level": "error",
+        "passed": true,
+        "message": "骨架根 = |mixamorig:Hips",
+        "auto_fixable": false,
+        "skipped": false
+      },
+      {
+        "check": "export.ue_path_valid",
+        "level": "error",
+        "passed": true,
+        "message": "UE 目标 = /Game/Animations，首次交付时由 UE 创建骨架",
+        "auto_fixable": false,
+        "skipped": false
+      }
+    ],
+    "skipped": []
+  },
+  "result": {
+    "status": "success",
+    "imported_clips": [
+      "new_clip"
+    ],
+    "errors": [],
+    "skipped_clips": [],
+    "skeleton_path": "/Game/Animations/walk_Skeleton",
+    "skeletal_mesh_path": "/Game/Animations/walk"
+  },
+  "thinning": {
+    "level": "medium",
+    "keys_before": 34,
+    "keys_after": 31
+  }
+}

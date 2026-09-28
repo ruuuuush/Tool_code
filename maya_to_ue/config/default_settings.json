@@ -1,0 +1,13 @@
+{
+  "_comment": "Default pipeline settings. Values here seed the UI; per-export overrides land in the manifest.",
+
+  "frame_rate": 30,
+  "fbx_export_dir": "./exports",
+  "ue_content_root": "/Game/Animations",
+  "overwrite_policy": "rename",
+  "default_preset_id": "ue_mannequin",
+  "write_markdown_report": true,
+  "log_file_name": "pipeline.log",
+  "auto_push_after_export": true,
+  "key_thinning": "off"
+}

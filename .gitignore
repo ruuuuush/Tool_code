@@ -1,0 +1,52 @@
+# === 大体积二进制资产：不进 git（合计约 234 MB）===
+# Standard Walk.fbx 单个 109.8 MB，超过 GitHub 单文件 100 MB 硬上限
+*.fbx
+*.fbv
+*.fbm/
+*.rar
+*.zip
+*.7z
+*.tar
+*.tar.gz
+
+# === Python ===
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# === 生成产物 ===
+motion_pipeline/out/
+*.log
+
+# === Maya 临时文件 ===
+*.ma~
+*.mb~
+*.mayaSwatches/
+*.swatches
+mayaRenderLog.txt
+
+# === Unreal 生成目录 ===
+Binaries/
+Intermediate/
+Saved/
+DerivedDataCache/
+*.uproject.dir/
+
+# === 编辑器 / 操作系统 ===
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# === 环境与密钥 ===
+.env
+.env.*
+!.env.example

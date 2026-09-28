@@ -1,0 +1,89 @@
+{
+  "_comment": "Skeleton presets for the Maya->UE pipeline. Add your own preset as a new key under 'presets'. See design.md section 7 for the schema.",
+
+  "presets": {
+
+    "ue_mannequin": {
+      "display_name": "UE Mannequin",
+      "skeleton_type": "humanoid",
+      "root_bone": "root",
+      "naming": {
+        "left_suffix": "_l",
+        "right_suffix": "_r",
+        "naming_regex": "^[a-z]+(_[a-z0-9]+)*(_l|_r)?$"
+      },
+      "bone_map": {
+        "pelvis": "pelvis",
+        "spine_01": "spine_01",
+        "spine_02": "spine_02",
+        "spine_03": "spine_03",
+        "neck_01": "neck_01",
+        "head": "head",
+        "clavicle_l": "clavicle_l",
+        "upperarm_l": "upperarm_l",
+        "lowerarm_l": "lowerarm_l",
+        "hand_l": "hand_l",
+        "clavicle_r": "clavicle_r",
+        "upperarm_r": "upperarm_r",
+        "lowerarm_r": "lowerarm_r",
+        "hand_r": "hand_r",
+        "thigh_l": "thigh_l",
+        "calf_l": "calf_l",
+        "foot_l": "foot_l",
+        "thigh_r": "thigh_r",
+        "calf_r": "calf_r",
+        "foot_r": "foot_r"
+      },
+      "required_bones": ["root", "pelvis", "spine_01"]
+    },
+
+    "mixamo": {
+      "display_name": "Mixamo",
+      "skeleton_type": "humanoid",
+      "root_bone": "Hips",
+      "naming": {
+        "left_suffix": "Left",
+        "right_suffix": "Right",
+        "naming_regex": "^(mixamorig[0-9]*:)?[A-Za-z][A-Za-z0-9_]*$"
+      },
+      "bone_map": {
+        "pelvis": "Hips",
+        "spine_01": "Spine",
+        "spine_02": "Spine1",
+        "spine_03": "Spine2",
+        "neck_01": "Neck",
+        "head": "Head",
+        "clavicle_l": "LeftShoulder",
+        "upperarm_l": "LeftArm",
+        "lowerarm_l": "LeftForeArm",
+        "hand_l": "LeftHand",
+        "clavicle_r": "RightShoulder",
+        "upperarm_r": "RightArm",
+        "lowerarm_r": "RightForeArm",
+        "hand_r": "RightHand",
+        "thigh_l": "LeftUpLeg",
+        "calf_l": "LeftLeg",
+        "foot_l": "LeftFoot",
+        "ball_l": "LeftToeBase",
+        "thigh_r": "RightUpLeg",
+        "calf_r": "RightLeg",
+        "foot_r": "RightFoot",
+        "ball_r": "RightToeBase"
+      },
+      "required_bones": ["Hips", "Spine"]
+    },
+
+    "custom": {
+      "display_name": "Custom Skeleton",
+      "skeleton_type": "custom",
+      "root_bone": "",
+      "naming": {
+        "left_suffix": "",
+        "right_suffix": "",
+        "naming_regex": ""
+      },
+      "bone_map": {},
+      "required_bones": []
+    }
+  }
+}

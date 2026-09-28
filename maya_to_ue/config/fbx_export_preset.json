@@ -1,0 +1,22 @@
+{
+  "_comment": "FBX export preset. Source scene axis/unit are preserved; no FBX axis or unit conversion is applied.",
+
+  "bake_animation": true,
+  "bake_resample_all": true,
+  "bake_step": 1.0,
+
+  "convert_axis": false,
+  "convert_unit": false,
+  "up_axis": "y",
+
+  "animation_only": true,
+  "include_constraints": true,
+  "include_deformers": false,
+  "include_mesh": false,
+  "include_materials": false,
+
+  "triangulate": false,
+  "smooth_normals": false,
+  "remove_unused_normals": false,
+  "fbx_version": ""
+}
