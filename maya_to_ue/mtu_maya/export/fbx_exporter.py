@@ -17,8 +17,8 @@ sibling modules and are called by export_animation().
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass, replace
-from typing import List, Optional
+from dataclasses import dataclass, field, replace
+from typing import List, Optional, Set
 
 from bridge.schema import (
     Clip,
@@ -68,6 +68,7 @@ class ExportRequest:
     thinning_level: str = "off"
     fbx_preset: Optional[FBXExportPreset] = None
     settings: Optional[PipelineSettings] = None
+    skipped_checks: Set[str] = field(default_factory=set)
 
 
 # ---------------------------------------------------------------------------
@@ -583,25 +584,25 @@ def _export_fbx(
     c = maya_utils.cmds()
 
     if not fbx_path or not str(fbx_path).strip():
-        raise ValueError("导出路径为空 —— 请在③里填好【保存目录】和【文件名】")
+        raise ValueError("导出路径为空 —— 请在【导出设置】里填好【保存目录】和【文件名】")
     if not str(fbx_path).lower().endswith(".fbx"):
         raise ValueError("导出文件必须以 .fbx 结尾")
     fbx_path = os.path.abspath(fbx_path).replace("\\", "/")
     if not root or not str(root).strip():
-        raise ValueError("骨架根节点为空 —— 请在③里选中骨架最顶层的关节")
+        raise ValueError("骨架根节点为空 —— 请在【导出设置】里选中骨架最顶层的关节")
 
     resolved_root = maya_utils.resolve_joint(root)
     if resolved_root is None:
         raise ValueError(
             f"选中的骨架根 {root!r} 在场景里找不到对应关节 —— "
-            "请在③的【骨架根节点】下拉里直接选一个，别手动敲"
+            "请在【导出设置】的【骨架根节点】下拉里直接选一个，别手动敲"
         )
 
     selected_joints = _select_joint_hierarchy(c, resolved_root)
     if not selected_joints:
         raise ValueError(
             f"从骨架根 {resolved_root!r} 选不到任何关节 —— 导出会得到空 FBX。"
-            "请确认③里选的是真正的骨架根节点。"
+            "请确认【导出设置】里选的是真正的骨架根节点。"
         )
     try:
         # Re-select explicit joint paths so unrelated geometry parented below
@@ -686,7 +687,7 @@ def export_animation(req: ExportRequest) -> ExportResult:
     ctx = build_context(req)
 
     # 2. Run all checks (locked: Error blocks export).
-    report = run_all_checks(ctx)
+    report = run_all_checks(ctx, skipped=req.skipped_checks)
 
     # 3. Compute export range from clips.
     export_range = compute_export_range(req.clips)

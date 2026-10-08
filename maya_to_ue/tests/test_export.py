@@ -101,6 +101,66 @@ def _fake_result(tmp: str, fbx_written: bool = False, with_errors: bool = False)
     )
 
 
+class TestExportSkipping(unittest.TestCase):
+    def _request(self):
+        from mtu_maya.core.preset_loader import SkeletonPreset
+
+        return ExportRequest(
+            fbx_path="hero.fbx",
+            clips=[Clip("idle", 1, 30)],
+            preset=SkeletonPreset(id="custom", display_name="Custom", skeleton_type="custom"),
+            skeleton_root="|root",
+        )
+
+    def test_default_sets_are_independent(self):
+        first, second = self._request(), self._request()
+        first.skipped_checks.add("scene.fps")
+        self.assertEqual(second.skipped_checks, set())
+
+    def test_export_rechecks_live_context_and_records_skips(self):
+        from unittest.mock import patch
+        from mtu_maya.checks import CheckContext, default_registry, run_all_checks
+        from mtu_maya.export import fbx_exporter as exporter
+
+        request = self._request()
+        request.skipped_checks = {v.id for v in default_registry().all()}
+        ctx = CheckContext()
+        with patch.object(exporter, "build_context", return_value=ctx) as build, \
+                patch.object(exporter, "run_all_checks", wraps=run_all_checks) as checks, \
+                patch.object(exporter.maya_utils, "ensure_fbx_plugin", return_value=False), \
+                patch.object(exporter, "_maya_version_str", return_value="2022"):
+            result = exporter.export_animation(request)
+
+        build.assert_called_once()
+        checks.assert_called_once_with(ctx, skipped=request.skipped_checks)
+        self.assertEqual(
+            {entry.check for entry in result.manifest.validation.skipped},
+            request.skipped_checks,
+        )
+        self.assertEqual(result.report.errors, [])
+        self.assertEqual(result.report.passed_count, 0)
+
+    def test_unskipped_errors_still_block_fbx(self):
+        from unittest.mock import patch
+        from mtu_maya.checks import CheckContext
+        from mtu_maya.export import fbx_exporter as exporter
+
+        report = RunReport(results=[CheckResult(
+            check_id="scene.fps", category="scene", level="error",
+            passed=False, message="fps mismatch",
+        )])
+        with patch.object(exporter, "build_context", return_value=CheckContext()), \
+                patch.object(exporter, "run_all_checks", return_value=report) as checks, \
+                patch.object(exporter, "_export_fbx") as write, \
+                patch.object(exporter, "_maya_version_str", return_value="2022"):
+            result = exporter.export_animation(self._request())
+
+        self.assertEqual(checks.call_args[1]["skipped"], set())
+        write.assert_not_called()
+        self.assertFalse(result.fbx_written)
+        self.assertEqual(result.manifest.validation.errors, 1)
+
+
 class TestExportRequestFirstDelivery(unittest.TestCase):
     def test_request_carries_first_delivery_options_when_settings_are_normalized(self):
         from dataclasses import replace

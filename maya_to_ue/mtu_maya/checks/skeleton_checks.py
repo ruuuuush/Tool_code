@@ -37,7 +37,7 @@ class SkeletonRootExistsValidator(BaseValidator):
                 category=self.category,
                 level=self.level,
                 passed=False,
-                message="场景里没找到根骨骼，也没在③里指定骨架根节点",
+                message="场景里没找到根骨骼，也没在【导出设置】里指定骨架根节点",
                 auto_fixable=self.auto_fixable,
             )
         selected_root = ctx.skeleton_root_selected

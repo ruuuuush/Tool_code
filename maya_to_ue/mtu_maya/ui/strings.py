@@ -121,7 +121,8 @@ TIP_THINNING = (
 )
 # (显示文案, 内部档位 key)
 THINNING_CHOICES = [("关闭", "off"), ("低", "low"), ("中", "medium"), ("高", "high")]
-BTN_BROWSE = "…"
+OVERWRITE_CHOICES = [("自动重命名", "rename"), ("覆盖已有资产", "overwrite"), ("跳过已有资产", "skip")]
+BTN_BROWSE = "浏览"
 BTN_EXPORT = "导出 FBX + Manifest"
 STATUS_READY = "就绪"
 STATUS_EXPORTING = "正在导出…"

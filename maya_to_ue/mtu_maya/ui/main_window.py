@@ -13,6 +13,7 @@ Launching inside Maya:
 from __future__ import annotations
 
 import os
+from html import escape
 from typing import List, Optional
 
 try:
@@ -118,7 +119,10 @@ class CheckListPanel(QtWidgets.QWidget):
         self._tree = QtWidgets.QTreeWidget()
         self._tree.setHeaderLabels([S.COL_CHECK, S.COL_STATUS])
         self._tree.setUniformRowHeights(True)
-        self._tree.setColumnWidth(0, 300)
+        self._tree.header().setStretchLastSection(False)
+        self._tree.header().setSectionResizeMode(0, QtWidgets.QHeaderView.Stretch)
+        self._tree.header().setSectionResizeMode(1, QtWidgets.QHeaderView.Fixed)
+        self._tree.setColumnWidth(1, 96)
         self._tree.setRootIsDecorated(True)
         self._tree.setAlternatingRowColors(True)
         self._tree.itemDoubleClicked.connect(self._on_double_click)
@@ -182,7 +186,7 @@ class CheckListPanel(QtWidgets.QWidget):
 
         for category, validators in categories.items():
             cat_label = S.CATEGORY_NAMES.get(category, category)
-            cat_item = QtWidgets.QTreeWidgetItem([f"{cat_label}（{category}）", ""])
+            cat_item = QtWidgets.QTreeWidgetItem([cat_label, str(len(validators))])
             f = cat_item.font(0)
             f.setBold(True)
             cat_item.setFont(0, f)
@@ -298,8 +302,10 @@ class CheckListPanel(QtWidgets.QWidget):
                 item.setText(1, S.SKIPPED_ICON)
                 item.setToolTip(1, S.TOOLTIP_SKIPPED)
                 item.setForeground(0, QtGui.QColor(T.TEXT_DIM))
+                item.setForeground(1, QtGui.QColor(T.TEXT_DIM))
                 continue
-            item.setText(1, level_icon(result.level, result.passed))
+            item.setText(1, S.STATUS_OK if result.passed else S.LEVEL_LABELS.get(result.level, S.STATUS_FAIL))
+            item.setForeground(1, QtGui.QColor(T.OK if result.passed else T.LEVEL_COLORS.get(result.level, T.TEXT)))
             msg = result.message or (S.STATUS_OK if result.passed else S.STATUS_FAIL)
             level_cn = S.LEVEL_LABELS.get(result.level, result.level)
             item.setToolTip(1, S.TOOLTIP_RESULT_FMT.format(level=level_cn, msg=msg))
@@ -365,6 +371,7 @@ class DetailPanel(QtWidgets.QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
 
         self._title = QtWidgets.QLabel(S.DETAIL_SELECT_HINT)
+        self._title.setTextFormat(QtCore.Qt.PlainText)
         self._title.setStyleSheet("font-weight: 700; font-size: 13px;")
         layout.addWidget(self._title)
 
@@ -375,6 +382,10 @@ class DetailPanel(QtWidgets.QWidget):
 
         self._details = QtWidgets.QTextEdit()
         self._details.setReadOnly(True)
+        self._details.document().setDefaultStyleSheet(
+            f"h3 {{ color: {T.TEXT_DIM}; font-size: 12px; margin-top: 12px; margin-bottom: 4px; }}"
+            "p { margin-top: 0px; margin-bottom: 8px; }"
+        )
         layout.addWidget(self._details)
 
         self._fix_btn = QtWidgets.QPushButton(S.BTN_FIX)
@@ -409,29 +420,28 @@ class DetailPanel(QtWidgets.QWidget):
         self._meta.setText(S.DETAIL_META_FMT.format(level=level_cn, fix=fix_info, status=status))
 
         # Artist-first layout: WHY -> HOW TO PASS -> what the tool found -> id.
-        body: List[str] = []
+        sections = []
         if info and info[1]:
-            body.append(S.DETAIL_WHY_HEADER)
-            body.append(info[1])
-            body.append("")
+            sections.append((S.DETAIL_WHY_HEADER, info[1]))
         if info and info[2]:
-            body.append(S.DETAIL_HOW_HEADER)
-            body.append(info[2])
-            body.append("")
+            sections.append((S.DETAIL_HOW_HEADER, info[2]))
 
-        body.append(S.DETAIL_DETAILS_HEADER)
         if result.skipped:
             # 不能拿上一次的结论顶替"没跑"这件事。
-            body.append(S.DETAIL_SKIPPED_BODY)
+            found = S.DETAIL_SKIPPED_BODY
         else:
-            body.append(result.message or (S.STATUS_OK if result.passed else S.STATUS_FAIL))
+            found = result.message or (S.STATUS_OK if result.passed else S.STATUS_FAIL)
             if result.details:
-                body_lines = [f"  - {d}" for d in result.details]
-                body.extend(body_lines)
-        body.append("")
-        body.append(S.DETAIL_CHECK_ID_FMT.format(cid=result.check_id))
-
-        self._details.setText("\n".join(body))
+                found += "\n" + "\n".join(f"- {d}" for d in result.details)
+        sections.append((S.DETAIL_DETAILS_HEADER, found))
+        body = [
+            f"<h3 style='font-size:12px; font-weight:600'>{escape(heading)}</h3>"
+            f"<p>{escape(text).replace(chr(10), '<br>')}</p>"
+            for heading, text in sections
+        ]
+        body.append(f"<p style='color:{T.TEXT_DIM}'>{escape(S.DETAIL_CHECK_ID_FMT.format(cid=result.check_id))}</p>")
+        self._details.setHtml("".join(body))
+        self._details.verticalScrollBar().setValue(0)
         self._current_id = result.check_id
         self._current_fixable = result.auto_fixable and not result.passed and not result.skipped
         self._fix_btn.setEnabled(self._current_fixable)
@@ -624,7 +634,8 @@ class ClipTablePanel(QtWidgets.QWidget):
         )
         self._view.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
         self._view.setAlternatingRowColors(True)
-        self._view.verticalHeader().setDefaultSectionSize(30)
+        self._view.setShowGrid(False)
+        self._view.verticalHeader().setDefaultSectionSize(38)
         self._view.verticalHeader().setVisible(False)
         self._view.setColumnWidth(0, 200)
         self._view.setColumnWidth(1, 90)
@@ -735,13 +746,15 @@ class ExportPanel(QtWidgets.QWidget):
         form = QtWidgets.QFormLayout()
         form.setLabelAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
         form.setHorizontalSpacing(14)
-        form.setVerticalSpacing(9)
+        form.setVerticalSpacing(4)
+        form.setFieldGrowthPolicy(QtWidgets.QFormLayout.AllNonFixedFieldsGrow)
+        form.addRow(_section_label(S.GROUP_LOCAL_OUTPUT))
 
         # —— 保存目录（文件夹，不带 .fbx）——
         self._fbx_dir = QtWidgets.QLineEdit()
         self._fbx_dir.setPlaceholderText(S.PH_FBX_DIR)
         browse_btn = QtWidgets.QPushButton(S.BTN_BROWSE)
-        browse_btn.setFixedSize(38, 32)
+        browse_btn.setFixedWidth(64)
         browse_btn.clicked.connect(self._on_browse)
         dir_row = QtWidgets.QHBoxLayout()
         dir_row.setContentsMargins(0, 0, 0, 0)
@@ -755,11 +768,15 @@ class ExportPanel(QtWidgets.QWidget):
         form.addRow(_form_label(S.LBL_FBX_NAME), self._fbx_name)
 
         # —— 关键帧抽稀：本地动作，导出前执行，可撤销 ——
-        self._thinning = QtWidgets.QComboBox()
+        self._thinning = T.ComboBox()
         for label, key in S.THINNING_CHOICES:
             self._thinning.addItem(label, key)
         self._thinning.setToolTip(S.TIP_THINNING)
         form.addRow(_form_label(S.LBL_THINNING), self._thinning)
+
+        self._root_joint = T.ComboBox()
+        self._root_joint.setEditable(False)
+        form.addRow(_form_label(S.LBL_SKEL_ROOT), self._root_joint)
 
         # 下面这些不是 Maya 端会执行的动作，而是写进 manifest 的约定，
         # 由 UE 侧导入时读取——分组标题点明去向，免得以为导出就进 UE 了。
@@ -773,7 +790,7 @@ class ExportPanel(QtWidgets.QWidget):
         form.addRow(_form_label(S.LBL_UE_SKELETON), self._ue_skeleton_path)
 
         # First delivery: ship the rig so UE can build the Skeleton itself.
-        self._include_rig = QtWidgets.QCheckBox(S.CHK_INCLUDE_RIG)
+        self._include_rig = T.CheckBox(S.CHK_INCLUDE_RIG)
         form.addRow(_form_label(S.LBL_INCLUDE_RIG), self._include_rig)
 
         self._ue_import_scale = QtWidgets.QDoubleSpinBox()
@@ -788,18 +805,15 @@ class ExportPanel(QtWidgets.QWidget):
         form.addRow(_form_label(S.LBL_UE_IMPORT_SCALE), self._ue_import_scale)
 
         # 导出的意图就是送进 UE——默认替用户走完最后一步。
-        self._auto_push = QtWidgets.QCheckBox(S.CHK_AUTO_PUSH)
+        self._auto_push = T.CheckBox(S.CHK_AUTO_PUSH)
         self._auto_push.setChecked(True)
         self._auto_push.setToolTip(S.TIP_AUTO_PUSH)
         form.addRow(_form_label(S.LBL_AUTO_PUSH), self._auto_push)
 
-        self._overwrite = QtWidgets.QComboBox()
-        self._overwrite.addItems(["rename", "overwrite", "skip"])
+        self._overwrite = T.ComboBox()
+        for label, policy in S.OVERWRITE_CHOICES:
+            self._overwrite.addItem(label, policy)
         form.addRow(_form_label(S.LBL_OVERWRITE), self._overwrite)
-
-        self._root_joint = QtWidgets.QComboBox()
-        self._root_joint.setEditable(False)  # 纯下拉，杜绝手敲出错
-        form.addRow(_form_label(S.LBL_SKEL_ROOT), self._root_joint)
 
         layout.addLayout(form)
 
@@ -907,7 +921,7 @@ class ExportPanel(QtWidgets.QWidget):
         return self._thinning.currentData() or "off"
 
     def overwrite_policy(self) -> str:
-        return self._overwrite.currentText()
+        return self._overwrite.currentData()
 
     def skeleton_root(self) -> str:
         """当前选中关节的【长路径】（存 userData 里）。没选就空串。"""
@@ -1013,16 +1027,23 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def _build_ui(self):
         central = QtWidgets.QWidget()
-        outer = QtWidgets.QVBoxLayout(central)
-        outer.setContentsMargins(16, 14, 16, 14)
-        outer.setSpacing(12)
-        # 交付卡片的高度随结果内容变化（失败详情、资产清单）。超高时给整窗
-        # 一个滚动条兜底，而不是让步骤区被挤没。
+        shell = QtWidgets.QVBoxLayout(central)
+        shell.setContentsMargins(18, 14, 18, 14)
+        shell.setSpacing(12)
+        content = QtWidgets.QWidget()
+        outer = QtWidgets.QVBoxLayout(content)
+        outer.setContentsMargins(0, 0, 0, 0)
+        outer.setSpacing(14)
+        # 交付卡片的高度随结果内容变化（失败详情、资产清单）。超高时给内容
+        # 一个滚动条兜底，导航固定在内容之外。
         scroll = QtWidgets.QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QtWidgets.QFrame.NoFrame)
-        scroll.setWidget(central)
-        self.setCentralWidget(scroll)
+        scroll.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+        scroll.setWidget(content)
+        self._content_scroll = scroll
+        shell.addWidget(scroll, stretch=1)
+        self.setCentralWidget(central)
 
         # ---- Header: product title + preset picker -------------------------
         title_row = QtWidgets.QHBoxLayout()
@@ -1034,7 +1055,7 @@ class MainWindow(QtWidgets.QMainWindow):
         preset_lbl = QtWidgets.QLabel(S.SKELETON_PRESET)
         preset_lbl.setProperty("dim", True)
         title_row.addWidget(preset_lbl)
-        self._preset_combo = QtWidgets.QComboBox()
+        self._preset_combo = T.ComboBox()
         self._preset_combo.setMinimumWidth(200)
         for p in self._preset_registry.all():
             self._preset_combo.addItem(p.display_name, userData=p.id)
@@ -1051,9 +1072,10 @@ class MainWindow(QtWidgets.QMainWindow):
         sb = QtWidgets.QHBoxLayout(scene_bar)
         sb.setContentsMargins(12, 8, 12, 8)
         self._scene_info = QtWidgets.QLabel(S.SCENE_NOT_READ)
+        self._scene_info.setTextFormat(QtCore.Qt.PlainText)
+        self._scene_info.setWordWrap(True)
         self._scene_info.setProperty("dim", True)
-        sb.addWidget(self._scene_info)
-        sb.addStretch()
+        sb.addWidget(self._scene_info, stretch=1)
         outer.addWidget(scene_bar)
 
         # ---- Step bar: the only place step names appear ---------------------
@@ -1095,8 +1117,9 @@ class MainWindow(QtWidgets.QMainWindow):
         nav_lay.setSpacing(8)
 
         self._gate_label = QtWidgets.QLabel("")
+        self._gate_label.setWordWrap(True)
         self._gate_label.setProperty("gate", True)
-        nav_lay.addWidget(self._gate_label)
+        nav_lay.addWidget(self._gate_label, stretch=1)
         nav_lay.addStretch()
 
         self._prev_btn = QtWidgets.QPushButton(S.NAV_PREV)
@@ -1115,7 +1138,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self._nav_export_btn.clicked.connect(self._export_panel.run_export_requested.emit)
         self._nav_export_btn.setVisible(False)
         nav_lay.addWidget(self._nav_export_btn)
-        outer.addWidget(nav)
+        shell.addWidget(nav)
 
         self._apply_export_defaults()
         self._go_to_step(0)
@@ -1145,6 +1168,8 @@ class MainWindow(QtWidgets.QMainWindow):
         lay.setContentsMargins(0, 0, 0, 0)
 
         split = QtWidgets.QSplitter(QtCore.Qt.Horizontal)
+        split.setChildrenCollapsible(False)
+        split.setHandleWidth(10)
         split.addWidget(self._panel(self._check_panel))
         split.addWidget(self._panel(self._detail_panel))
         split.setStretchFactor(0, 3)
@@ -1181,7 +1206,7 @@ class MainWindow(QtWidgets.QMainWindow):
         if default_export_dir:
             self._export_panel._fbx_dir.setText(default_export_dir)
         self._export_panel._ue_root.setText(self._config.settings.ue_content_root)
-        policy_index = self._export_panel._overwrite.findText(self._config.settings.overwrite_policy)
+        policy_index = self._export_panel._overwrite.findData(self._config.settings.overwrite_policy)
         if policy_index >= 0:
             self._export_panel._overwrite.setCurrentIndex(policy_index)
         self._export_panel._auto_push.setChecked(
@@ -1258,6 +1283,11 @@ class MainWindow(QtWidgets.QMainWindow):
             card.hide_handoff()
         # 不做淡入：这块是交付结果，不能因为动画没跑完就看不见。
         card.setVisible(True)
+        QtCore.QTimer.singleShot(0, self._focus_delivery)
+
+    def _focus_delivery(self):
+        if self._delivery.isVisibleTo(self):
+            self._content_scroll.ensureWidgetVisible(self._delivery)
 
     def _reveal_path(self, path: str):
         """在系统文件管理器里打开该产物所在目录。"""
@@ -1279,6 +1309,7 @@ class MainWindow(QtWidgets.QMainWindow):
         if not code or (self._push_worker and self._push_worker.isRunning()):
             return
         self._delivery.set_push_state(S.PUSH_BUSY, "info", busy=True)
+        QtCore.QTimer.singleShot(0, self._focus_delivery)
         worker = _PushWorker(code, self)
         worker.finished_with.connect(self._on_push_finished)
         self._push_worker = worker
@@ -1299,6 +1330,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def _on_push_finished(self, result):
         self._push_worker = None
+        QtCore.QTimer.singleShot(0, self._focus_delivery)
         if result.ok:
             editor = result.editor.describe() if result.editor else ""
             outcome = self._read_back_import_outcome()
@@ -1357,6 +1389,7 @@ class MainWindow(QtWidgets.QMainWindow):
     def _go_to_step(self, index: int):
         index = max(0, min(index, self._pages.count() - 1))
         self._pages.setCurrentIndex(index)
+        self._content_scroll.verticalScrollBar().setValue(0)
         self._step_bar.set_current(index)
         self._prev_btn.setEnabled(index > 0)
         self._next_btn.setEnabled(index < self._pages.count() - 1)
@@ -1494,7 +1527,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self._export_panel._ue_root.setText(self._config.settings.ue_content_root)
         if self._export_panel._fbx_dir.text().strip() in ("", "./exports"):
             self._export_panel._fbx_dir.setText(self._config.settings.fbx_export_dir)
-        policy_index = self._export_panel._overwrite.findText(self._config.settings.overwrite_policy)
+        policy_index = self._export_panel._overwrite.findData(self._config.settings.overwrite_policy)
         if policy_index >= 0:
             self._export_panel._overwrite.setCurrentIndex(policy_index)
         self._export_panel._auto_push.setChecked(
@@ -1771,6 +1804,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 thinning_level=self._export_panel.thinning_level(),
                 settings=self._config.settings,
                 fbx_preset=self._config.fbx_preset,
+                skipped_checks=self._check_panel.skipped_ids(),
             )
             result = export_animation(req)
             write_all_artifacts(result, write_report=self._config.settings.write_markdown_report)

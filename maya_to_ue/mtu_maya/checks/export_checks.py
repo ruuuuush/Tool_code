@@ -72,7 +72,7 @@ class ExportPathValidator(BaseValidator):
                 category=self.category,
                 level=self.level,
                 passed=False,
-                message="还没设置导出位置 —— 请在③里填【保存目录】和【文件名】",
+                message="还没设置导出位置 —— 请在【导出设置】里填【保存目录】和【文件名】",
                 # Nothing to create when there's no path at all.
                 auto_fixable=False,
             )
@@ -177,7 +177,7 @@ class ExportUEPathValidator(BaseValidator):
         problems = []
 
         if not content_root:
-            problems.append("UE 目标路径为空 —— 在③里填，例如 /Game/Animations/Hero")
+            problems.append("UE 目标路径为空 —— 在【导出设置】里填，例如 /Game/Animations/Hero")
         elif not content_root.startswith("/Game"):
             problems.append(
                 f"UE 目标路径必须以 /Game 开头，现在是：{content_root}"
@@ -235,7 +235,7 @@ class ExportSkeletonRootSetValidator(BaseValidator):
                 category=self.category,
                 level=self.level,
                 passed=False,
-                message="还没指定骨架根节点 —— 在③的【骨架根节点】里选最顶层的关节",
+                message="还没指定骨架根节点 —— 在【导出设置】的【骨架根节点】里选最顶层的关节",
                 auto_fixable=self.auto_fixable,
             )
         return CheckResult(

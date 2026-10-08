@@ -75,12 +75,14 @@ LEVEL_COLORS = {"error": ERR, "warning": WARN, "info": INFO, "ok": OK}
 APP_QSS = f"""
 /* ---- base -------------------------------------------------------------- */
 QWidget {{
-    background-color: {BG_DARKEST};
+    background-color: transparent;
     color: {TEXT};
-    font-size: 12px;
+    font-size: 13px;
+    font-weight: normal;
     selection-background-color: {SELECTION_BG};
     selection-color: #ffffff;
 }}
+QMainWindow {{ background-color: {BG_DARKEST}; }}
 QMainWindow::separator {{ background: {BG_DARKEST}; }}
 
 QLabel {{ background: transparent; }}
@@ -93,24 +95,20 @@ QLabel[errorText="true"] {{
     border-radius: 6px;
     padding: 8px 10px;
 }}
-QLabel[pathText="true"] {{
-    color: {TEXT_DIM};
-    font-family: "Consolas", "Menlo", monospace;
-}}
+QLabel[pathText="true"] {{ color: {TEXT_DIM}; }}
+QLabel[codeText="true"] {{ font-size: 12px; }}
 QLabel[artifactName="true"] {{
     color: {TEXT};
     font-weight: 600;
 }}
 QLabel[h1="true"] {{
-    font-size: 17px;
-    font-weight: 800;
-    letter-spacing: 0.4px;
+    font-size: 21px;
+    font-weight: 700;
 }}
 QLabel[colHead="true"] {{
     color: {TEXT_DIM};
-    font-weight: 700;
-    font-size: 11px;
-    letter-spacing: 0.6px;
+    font-weight: 600;
+    font-size: 12px;
 }}
 QLabel[gate="true"] {{
     color: {TEXT_DIM};
@@ -166,8 +164,9 @@ QGroupBox::title {{
 QPushButton {{
     background-color: {BG_RAISED};
     border: 1px solid {BORDER};
-    border-radius: 5px;
-    padding: 6px 14px;
+    border-radius: 7px;
+    padding: 7px 14px;
+    min-height: 18px;
 }}
 QPushButton:hover   {{ background-color: {BG_HOVER}; border-color: {FOCUS}; }}
 QPushButton:pressed {{ background-color: {BG_PRESSED}; }}
@@ -185,8 +184,8 @@ QPushButton[accent="true"] {{
 QPushButton[accent="true"]:hover   {{ background-color: {ACCENT_HOVER}; border-color: {ACCENT_HOVER}; }}
 QPushButton[accent="true"]:pressed {{ background-color: {ACCENT_PRESSED}; }}
 QPushButton[accent="true"]:disabled {{
-    background-color: transparent;
-    border: 1px dashed {BORDER};
+    background-color: {BG_RAISED};
+    border: 1px solid {BORDER_SOFT};
     color: {TEXT_FAINT};
 }}
 
@@ -213,8 +212,8 @@ QPushButton[flat="true"]:disabled {{ color: {TEXT_FAINT}; background: transparen
 QLineEdit, QComboBox, QSpinBox, QDoubleSpinBox, QTextEdit, QPlainTextEdit {{
     background-color: {BG_DARKEST};
     border: 1px solid {BORDER};
-    border-radius: 5px;
-    padding: 6px 8px;
+    border-radius: 6px;
+    padding: 6px 10px;
     selection-background-color: {SELECTION_BG};
 }}
 QLineEdit:hover, QComboBox:hover, QSpinBox:hover, QDoubleSpinBox:hover {{
@@ -228,7 +227,9 @@ QTextEdit:focus, QPlainTextEdit:focus {{
 }}
 QLineEdit:disabled, QComboBox:disabled {{ color: {TEXT_FAINT}; }}
 
-QComboBox::drop-down {{ border: none; width: 22px; }}
+QComboBox {{ padding-right: 30px; }}
+QComboBox::drop-down {{ border: none; width: 26px; }}
+QComboBox::down-arrow {{ image: none; }}
 QComboBox QAbstractItemView {{
     background-color: {BG_RAISED};
     border: 1px solid {BORDER};
@@ -258,18 +259,9 @@ QSpinBox::down-arrow, QDoubleSpinBox::down-arrow {{
     border-right: 4px solid transparent;
     border-top: 5px solid {TEXT_DIM};
 }}
-QCheckBox {{ spacing: 8px; }}
-QCheckBox::indicator {{
-    width: 15px; height: 15px;
-    border: 1px solid {BORDER};
-    border-radius: 4px;
-    background-color: {BG_DARKEST};
-}}
-QCheckBox::indicator:hover {{ border-color: {ACCENT}; }}
-QCheckBox::indicator:checked {{
-    background-color: {ACCENT};
-    border-color: {ACCENT};
-}}
+QCheckBox {{ spacing: 9px; }}
+QCheckBox::indicator {{ width: 17px; height: 17px; image: none; }}
+QTreeView::indicator {{ width: 17px; height: 17px; }}
 
 /* ---- tree / table -------------------------------------------------------- */
 QTreeView, QTableView {{
@@ -285,7 +277,7 @@ QTreeView, QTableView {{
    cropped the clip-name editor down to a sliver. */
 QTreeView::item, QTableView::item {{ padding: 2px 4px; border: none; }}
 /* The tree is read-only, so it can afford roomier rows via min-height. */
-QTreeView::item {{ min-height: 24px; }}
+QTreeView::item {{ min-height: 28px; }}
 QTreeView::item:hover, QTableView::item:hover {{ background-color: {BG_HOVER}; }}
 QTreeView::item:selected, QTableView::item:selected {{
     background-color: {SELECTION_BG};
@@ -326,9 +318,10 @@ QProgressBar {{
 }}
 QProgressBar::chunk {{ background-color: {ACCENT}; border-radius: 3px; }}
 /* ---- splitters / scrollbars --------------------------------------------- */
-QSplitter::handle {{ background: {BORDER_SOFT}; }}
-QSplitter::handle:horizontal {{ width: 2px; }}
-QSplitter::handle:vertical {{ height: 2px; }}
+QSplitter::handle {{ background: transparent; }}
+QSplitter::handle:hover {{ background: {BORDER}; }}
+QSplitter::handle:horizontal {{ width: 10px; }}
+QSplitter::handle:vertical {{ height: 10px; }}
 
 QScrollBar:vertical {{
     background: transparent; width: 10px; margin: 2px;
@@ -372,21 +365,72 @@ QTabWidget::pane {{ border: 1px solid {BORDER_SOFT}; }}
 # Small animated widgets / helpers
 # ---------------------------------------------------------------------------
 
+class CheckBox(QtWidgets.QCheckBox):
+    def paintEvent(self, event):
+        super().paintEvent(event)
+        option = QtWidgets.QStyleOptionButton()
+        self.initStyleOption(option)
+        rect = self.style().subElementRect(
+            QtWidgets.QStyle.SE_CheckBoxIndicator, option, self
+        ).adjusted(1, 1, -1, -1)
+        painter = QtGui.QPainter(self)
+        painter.setRenderHint(QtGui.QPainter.Antialiasing)
+        active = self.checkState() != QtCore.Qt.Unchecked
+        edge = ACCENT if active or self.underMouse() else BORDER
+        painter.setPen(QtGui.QPen(QtGui.QColor(edge), 1))
+        painter.setBrush(QtGui.QColor(ACCENT if active else BG_DARKEST))
+        painter.drawRoundedRect(rect, 4, 4)
+        if active:
+            painter.setPen(QtGui.QPen(QtGui.QColor(ACCENT_TEXT), 2))
+            if self.checkState() == QtCore.Qt.PartiallyChecked:
+                painter.drawLine(rect.left() + 4, rect.center().y(), rect.right() - 4, rect.center().y())
+            else:
+                painter.drawPolyline(QtGui.QPolygon([
+                    QtCore.QPoint(rect.left() + 3, rect.center().y()),
+                    QtCore.QPoint(rect.center().x() - 1, rect.bottom() - 3),
+                    QtCore.QPoint(rect.right() - 3, rect.top() + 3),
+                ]))
+        painter.end()
+
+
+class ComboBox(QtWidgets.QComboBox):
+    def paintEvent(self, event):
+        super().paintEvent(event)
+        option = QtWidgets.QStyleOptionComboBox()
+        self.initStyleOption(option)
+        rect = self.style().subControlRect(
+            QtWidgets.QStyle.CC_ComboBox, option, QtWidgets.QStyle.SC_ComboBoxArrow, self
+        )
+        center = rect.center()
+        painter = QtGui.QPainter(self)
+        painter.setRenderHint(QtGui.QPainter.Antialiasing)
+        painter.setPen(QtGui.QPen(QtGui.QColor(TEXT_DIM if self.isEnabled() else TEXT_FAINT), 1.6))
+        painter.drawPolyline(QtGui.QPolygon([
+            QtCore.QPoint(center.x() - 4, center.y() - 2),
+            QtCore.QPoint(center.x(), center.y() + 2),
+            QtCore.QPoint(center.x() + 4, center.y() - 2),
+        ]))
+        painter.end()
+
+
 class StatusBadge(QtWidgets.QLabel):
     """A pill-shaped colored badge (e.g. "12 通过 / 2 错误")."""
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setAlignment(QtCore.Qt.AlignCenter)
+        self.setFixedHeight(26)
+        self.setSizePolicy(QtWidgets.QSizePolicy.Maximum, QtWidgets.QSizePolicy.Fixed)
         self._set_color(TEXT_DIM)
 
     def _set_color(self, color: str):
+        tint = QtGui.QColor(color)
         self.setStyleSheet(
-            f"background-color: transparent;"
+            f"background-color: rgba({tint.red()}, {tint.green()}, {tint.blue()}, 0.12);"
             f"color: {color};"
-            f"border: 1px solid {color};"
-            f"border-radius: 9px;"
-            f"padding: 1px 10px;"
+            f"border: 1px solid rgba({tint.red()}, {tint.green()}, {tint.blue()}, 0.3);"
+            f"border-radius: 13px;"
+            f"padding: 2px 12px;"
             f"font-weight: 600;"
         )
 
@@ -445,7 +489,7 @@ class StepDot(QtWidgets.QLabel):
     todo    - flat grey ring
     """
 
-    _SIZE = 24
+    _SIZE = 30
 
     def __init__(self, number: str, parent=None):
         super().__init__(parent)
@@ -509,7 +553,7 @@ class StepBar(QtWidgets.QWidget):
                 line = QtWidgets.QFrame()
                 line.setFrameShape(QtWidgets.QFrame.HLine)
                 line.setFixedHeight(1)
-                line.setFixedWidth(72)
+                line.setFixedWidth(88)
                 line.setStyleSheet(f"background-color: {BORDER}; border: none;")
                 self._lines.append(line)
                 lay.addWidget(line)
@@ -589,7 +633,7 @@ class ArtifactRow(QtWidgets.QWidget):
         self._path = ""
 
         lay = QtWidgets.QHBoxLayout(self)
-        lay.setContentsMargins(10, 5, 10, 5)
+        lay.setContentsMargins(10, 2, 10, 2)
         lay.setSpacing(9)
 
         self._dot = QtWidgets.QLabel("○")
@@ -603,6 +647,7 @@ class ArtifactRow(QtWidgets.QWidget):
         lay.addWidget(self._name)
 
         self._detail = QtWidgets.QLabel("—")
+        self._detail.setTextFormat(QtCore.Qt.PlainText)
         self._detail.setProperty("pathText", True)
         self._detail.setWordWrap(True)
         self._detail.setTextInteractionFlags(QtCore.Qt.TextSelectableByMouse)
@@ -670,9 +715,10 @@ class DeliveryCard(QtWidgets.QFrame):
         self._stripe.setMinimumHeight(16)
         head_row.addWidget(self._stripe)
         self._header = QtWidgets.QLabel()
+        self._header.setWordWrap(True)
+        self._header.setTextFormat(QtCore.Qt.PlainText)
         self._header.setStyleSheet("font-weight: 700;")
-        head_row.addWidget(self._header)
-        head_row.addStretch()
+        head_row.addWidget(self._header, stretch=1)
         # 收拢态是"系统已经办完"的默认视图，不是把信息藏起来——路径随时可查。
         self._details_btn = QtWidgets.QPushButton("详情")
         self._details_btn.setProperty("flat", True)
@@ -736,17 +782,24 @@ class DeliveryCard(QtWidgets.QFrame):
         ho.addLayout(title_row)
 
         self._handoff_code = QtWidgets.QLabel()
+        self._handoff_code.setProperty("codeText", True)
+        self._handoff_code.setTextFormat(QtCore.Qt.PlainText)
         self._handoff_code.setContentsMargins(12, 0, 12, 4)
         self._handoff_code.setWordWrap(True)
         self._handoff_code.setTextInteractionFlags(QtCore.Qt.TextSelectableByMouse)
         self._handoff_code.setStyleSheet(
-            f'font-family: "Consolas", "Menlo", monospace;'
             f"color: {TEXT_DIM}; background-color: {BG_DARKEST};"
-            f"border: 1px solid {BORDER_SOFT}; border-radius: 5px; padding: 8px;"
+            f"border: 1px solid {BORDER_SOFT}; border-radius: 6px; padding: 8px;"
         )
-        ho.addWidget(self._handoff_code)
+        code_scroll = QtWidgets.QScrollArea()
+        code_scroll.setWidgetResizable(True)
+        code_scroll.setFrameShape(QtWidgets.QFrame.NoFrame)
+        code_scroll.setFixedHeight(112)
+        code_scroll.setWidget(self._handoff_code)
+        ho.addWidget(code_scroll)
 
         self._push_status = QtWidgets.QLabel()
+        self._push_status.setTextFormat(QtCore.Qt.PlainText)
         self._push_status.setContentsMargins(12, 0, 12, 2)
         self._push_status.setWordWrap(True)
         self._push_status.setTextInteractionFlags(QtCore.Qt.TextSelectableByMouse)
@@ -842,11 +895,32 @@ class DeliveryCard(QtWidgets.QFrame):
 
 def apply_theme(app_or_widget):
     """Install the dark theme QSS on a QApplication or a top-level widget."""
+    database = QtGui.QFontDatabase if QtCore.qVersion().startswith("6.") else QtGui.QFontDatabase()
+    families = set(database.families())
+    font = QtGui.QFont(app_or_widget.font())
+    for family in ("Microsoft YaHei UI", "Microsoft YaHei", "Noto Sans CJK SC", "Segoe UI"):
+        if family in families:
+            font.setFamily(family)
+            break
+    font.setPixelSize(13)
+    app_or_widget.setFont(font)
     app_or_widget.setStyleSheet(APP_QSS)
+    widgets = app_or_widget.findChildren(QtWidgets.QWidget)
+    for widget in widgets:
+        if widget.property("codeText"):
+            code_font = QtGui.QFontDatabase.systemFont(QtGui.QFontDatabase.FixedFont)
+            if "Consolas" in families:
+                code_font.setFamily("Consolas")
+            code_font.setPixelSize(12)
+            widget.setFont(code_font)
+        elif widget.property("pathText"):
+            widget.setFont(font)
 
 
 __all__ = [
     "APP_QSS",
+    "CheckBox",
+    "ComboBox",
     "StatusBadge",
     "StepDot",
     "StepBar",

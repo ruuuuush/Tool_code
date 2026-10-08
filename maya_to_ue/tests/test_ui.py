@@ -793,6 +793,141 @@ class TestCellEditorFits(unittest.TestCase):
         self.assertEqual(editor.text(), "walk_forward")
 
 
+class TestVisualPolish(unittest.TestCase):
+    def setUp(self):
+        from mtu_maya.ui import style
+
+        self.win = _main_window()
+        style.apply_theme(self.win)
+        self.addCleanup(self.win.close)
+        self.win.show()
+        _APP.processEvents()
+
+    def test_theme_leaves_host_application_unchanged(self):
+        from mtu_maya.ui import style
+
+        before = (_APP.styleSheet(), _APP.style(), _APP.font().toString())
+        style.apply_theme(self.win)
+        after = (_APP.styleSheet(), _APP.style(), _APP.font().toString())
+        self.assertEqual(before, after)
+
+    def test_ui_and_code_fonts_are_explicit(self):
+        database = QtGui.QFontDatabase if QtCore.qVersion().startswith("6.") else QtGui.QFontDatabase()
+        families = set(database.families())
+        expected = next((
+            family for family in (
+                "Microsoft YaHei UI", "Microsoft YaHei", "Noto Sans CJK SC", "Segoe UI"
+            ) if family in families
+        ), _APP.font().family())
+        self.assertEqual(self.win.font().family(), expected)
+        self.assertEqual(self.win.font().pixelSize(), 13)
+        self.assertEqual(self.win._export_panel._fbx_name.font().family(), expected)
+        self.assertTrue(self.win._delivery._handoff_code.property("codeText"))
+        self.assertEqual(self.win._delivery._handoff_code.font().pixelSize(), 12)
+
+    def test_form_fits_default_window(self):
+        from mtu_maya.ui.main_window import STEP_EXPORT
+
+        self.win._go_to_step(STEP_EXPORT)
+        _APP.processEvents()
+        panel = self.win._export_panel
+        scroll = self.win._pages.currentWidget().findChild(QtWidgets.QScrollArea)
+        self.assertEqual(scroll.verticalScrollBar().maximum(), 0)
+        self.assertTrue(self.win.rect().contains(panel._overwrite.mapTo(self.win, panel._overwrite.rect().bottomRight())))
+
+    def test_overwrite_labels_keep_internal_keys(self):
+        from mtu_maya.ui import strings as S
+
+        panel = self.win._export_panel
+        for index, (label, policy) in enumerate(S.OVERWRITE_CHOICES):
+            panel._overwrite.setCurrentIndex(index)
+            self.assertEqual(panel._overwrite.currentText(), label)
+            self.assertEqual(panel.overwrite_policy(), policy)
+
+    def test_checkbox_paints_check_and_partial_mark(self):
+        from mtu_maya.ui import style
+
+        checkbox = style.CheckBox()
+        style.apply_theme(checkbox)
+        checkbox.setTristate(True)
+        checkbox.resize(28, 28)
+        counts = []
+        for state in (QtCore.Qt.Unchecked, QtCore.Qt.Checked, QtCore.Qt.PartiallyChecked):
+            checkbox.setCheckState(state)
+            image = checkbox.grab().toImage()
+            counts.append(sum(
+                1 for x in range(image.width()) for y in range(image.height())
+                if min(image.pixelColor(x, y).red(), image.pixelColor(x, y).green(), image.pixelColor(x, y).blue()) > 210
+            ))
+        self.assertEqual(counts[0], 0)
+        self.assertGreater(counts[1], 0)
+        self.assertGreater(counts[2], 0)
+
+    def test_dropdown_paints_visible_arrow(self):
+        from mtu_maya.ui import style
+
+        combo = style.ComboBox()
+        combo.addItem("")
+        style.apply_theme(combo)
+        combo.resize(150, 36)
+        option = QtWidgets.QStyleOptionComboBox()
+        combo.initStyleOption(option)
+        rect = combo.style().subControlRect(
+            QtWidgets.QStyle.CC_ComboBox, option, QtWidgets.QStyle.SC_ComboBoxArrow, combo
+        )
+        image = combo.grab().toImage()
+        center = rect.center()
+        self.assertTrue(any(
+            image.pixelColor(x, y).lightness() > 90
+            for x in range(center.x() - 5, center.x() + 6)
+            for y in range(center.y() - 4, center.y() + 5)
+        ))
+
+    def test_result_rows_have_text_states(self):
+        from mtu_maya.checks import CheckResult, RunReport
+        from mtu_maya.ui import strings as S
+
+        panel = self.win._check_panel
+        ids = list(panel._items_by_id)[:3]
+        panel.update_results(RunReport(results=[
+            CheckResult(check_id=ids[0], category="scene", level="error", passed=True),
+            CheckResult(check_id=ids[1], category="scene", level="warning", passed=False),
+            CheckResult(check_id=ids[2], category="scene", level="error", passed=False, skipped=True),
+        ]))
+        self.assertEqual(panel._items_by_id[ids[0]].text(1), S.STATUS_OK)
+        self.assertEqual(panel._items_by_id[ids[1]].text(1), S.LEVEL_LABELS["warning"])
+        self.assertEqual(panel._items_by_id[ids[2]].text(1), S.STATUS_SKIPPED)
+        self.assertEqual(panel._tree.columnWidth(1), 96)
+
+    def test_detail_escapes_dynamic_message_and_nodes(self):
+        from mtu_maya.checks import CheckResult
+
+        message = '<b>root & pelvis</b><img src="missing.png">'
+        detail = self.win._detail_panel
+        detail.show_result(CheckResult(
+            check_id="skeleton.scale", category="skeleton", level="warning",
+            passed=False, message=message, details=["<joint> & value"],
+        ))
+        self.assertIn(message, detail._details.toPlainText())
+        self.assertIn("<joint> & value", detail._details.toPlainText())
+        self.assertIn("&lt;b&gt;", detail._details.toHtml())
+
+    def test_delivery_scroll_keeps_navigation_visible(self):
+        from mtu_maya.ui.main_window import STEP_CHECK
+
+        self.win._go_to_step(STEP_CHECK)
+        self.win.show_delivery(_export_result())
+        _APP.processEvents()
+        self.win._focus_delivery()
+        _APP.processEvents()
+        nav = self.win._nav_export_btn
+        self.assertTrue(self.win.rect().contains(nav.mapTo(self.win, nav.rect().bottomRight())))
+        self.assertFalse(self.win._content_scroll.isAncestorOf(nav))
+        code_scroll = self.win._delivery._handoff.findChild(QtWidgets.QScrollArea)
+        self.assertEqual(code_scroll.height(), 112)
+        self.assertTrue(self.win._delivery._copy_btn.isVisibleTo(self.win))
+
+
 class TestUEHandoff(unittest.TestCase):
     """Maya writes FBX + manifest; UE builds the assets. The card has to say
     so, or users fill in a UE path and go looking for assets that were never
@@ -1137,6 +1272,14 @@ class TestSkipConfirmBeforeExport(unittest.TestCase):
     def _export(self, report):
         self.win._on_run_checks = lambda: setattr(self.win, "_last_report", report)
         self.win._on_export()
+
+    def test_selection_is_carried_in_export_request(self):
+        panel = self.win._check_panel
+        check_id = next(iter(panel._items_by_id))
+        panel._items_by_id[check_id].setCheckState(0, QtCore.Qt.Unchecked)
+        self._export(_report_with_skip(check_id))
+        self.assertEqual(len(self.exported), 1)
+        self.assertEqual(self.exported[0].skipped_checks, {check_id})
 
     def test_skipped_items_trigger_a_confirmation(self):
         self._export(_report_with_skip("skeleton.naming"))
