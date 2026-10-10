@@ -661,8 +661,6 @@ def _import_clip_fbx(
             if not u.EditorAssetLibrary.save_asset(package_path):
                 raise RuntimeError(f"could not save imported AnimSequence: {package_path}")
             return package_path
-    if _asset_exists(final_path):
-        return final_path
     raise RuntimeError(f"FBX import did not create AnimSequence: {final_path}")
 
 
@@ -699,6 +697,8 @@ def import_manifest(manifest_path: str, fbx_path_override: Optional[str] = None)
     """
     manifest = read_manifest(manifest_path)
     fbx_path = fbx_path_override or manifest.fbx_path
+    if manifest.publication is not None:
+        return _import_publication(manifest, manifest_path, fbx_path)
 
     outcome = ImportOutcome(
         manifest_path=manifest_path,
@@ -815,6 +815,71 @@ def import_manifest(manifest_path: str, fbx_path_override: Optional[str] = None)
                                           f"import failed: {type(exc).__name__}: {exc}"))
 
     _write_back_result(manifest, manifest_path, outcome)
+    return outcome
+
+
+def _import_publication(manifest, manifest_path, fbx_path):
+    import uuid
+    from bridge.manifest import atomic_write_json
+    from bridge.publication import PublicationRequest, file_hash, read_json, receipt_path, verify_package
+    from .verification import verify_animation
+
+    publication = manifest.publication
+    outcome = ImportOutcome(manifest_path, manifest.ue_destination.skeleton_path, "")
+    receipt = {
+        "version": 1, "execution_id": uuid.uuid4().hex,
+        "publish_id": publication["publish_id"], "manifest_sha256": file_hash(manifest_path),
+        "project": "", "engine_version": "", "verification": [],
+    }
+    path = receipt_path(manifest_path)
+    try:
+        verify_package(manifest, manifest_path, fbx_path)
+        problems = check_environment()
+        if problems:
+            raise ValueError("; ".join(problems))
+        u = _unreal()
+        receipt["project"] = u.SystemLibrary.get_project_name()
+        receipt["engine_version"] = u.SystemLibrary.get_engine_version()
+        if receipt["project"] != publication["project"]:
+            raise ValueError("当前 UE 项目与发布项目不匹配")
+        skeleton = u.load_asset(outcome.skeleton_asset_path)
+        if not isinstance(skeleton, u.Skeleton):
+            raise ValueError("指定目标不是有效 Skeleton")
+        library = getattr(u, "AnimationLibrary", None)
+        required = ("get_num_frames", "get_num_keys", "get_sequence_length", "get_animation_track_names")
+        if library is None or any(not callable(getattr(library, name, None)) for name in required):
+            raise ValueError("AnimationLibrary 验收 API 不可用")
+        relative = PublicationRequest(publication["project"], publication["asset"], publication["revision"]).relative_path()
+        destination = unreal_path_join(manifest.ue_destination.content_root, relative)
+        targets = [(clip, unreal_path_join(destination, clip.name)) for clip in manifest.clips]
+        previous = read_json(path) if os.path.isfile(path) else None
+        reuse = bool(previous and previous.get("publish_id") == publication["publish_id"]
+                     and previous.get("manifest_sha256") == receipt["manifest_sha256"]
+                     and previous.get("project") == receipt["project"]
+                     and previous.get("result", {}).get("status") == "success")
+        if not reuse and any(_asset_exists(target) for _, target in targets):
+            raise ValueError("正式发布版本已有资产：禁止覆盖；请使用新版本")
+        for clip, target in targets:
+            try:
+                if not reuse:
+                    _import_clip_fbx(fbx_path, outcome.skeleton_asset_path, destination, clip.name,
+                                     clip, manifest.convention.frame_rate, overwrite=False)
+                    _set_root_motion(target, clip.root_motion)
+                verified = verify_animation(u, target, outcome.skeleton_asset_path, clip,
+                                            manifest.convention.frame_rate, publication["required_bones"])
+                receipt["verification"].append(verified)
+                if not verified["passed"]:
+                    raise ValueError("; ".join(verified["errors"]))
+                outcome.add(ClipImportOutcome(clip.name, target, "verified" if reuse else "create", True, "verified"))
+            except Exception as exc:
+                outcome.add(ClipImportOutcome(clip.name, target, "failed", False, str(exc)))
+    except Exception as exc:
+        outcome.errors.append(f"正式发布失败：{type(exc).__name__}: {exc}")
+    receipt["result"] = outcome.to_result_dict()
+    try:
+        atomic_write_json(receipt, path)
+    except Exception as exc:
+        outcome.errors.append(f"验收回执写入失败：{type(exc).__name__}: {exc}")
     return outcome
 
 

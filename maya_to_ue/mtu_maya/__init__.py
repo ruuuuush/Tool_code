@@ -9,4 +9,4 @@ Subpackages:
     ui     - PySide6/PySide2 main window and widgets
 """
 
-__version__ = "0.1.0"
+from tool_version import VERSION as __version__

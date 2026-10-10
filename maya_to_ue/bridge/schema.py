@@ -406,6 +406,7 @@ class Manifest:
     # 本次导出执行的关键帧抽稀摘要：{"level", "keys_before", "keys_after"}。
     # None = 未抽稀（档位关闭）。交付可复现性留痕，UE 导入不读它。
     thinning: Optional[Dict[str, Any]] = None
+    publication: Optional[Dict[str, Any]] = None
 
     # -- construction -------------------------------------------------------
 
@@ -436,6 +437,7 @@ class Manifest:
             result=ImportResult.from_dict(result),
             # 旧 manifest 没有这个键：未抽稀与"记录缺失"同等对待。
             thinning=data.get("thinning"),
+            publication=data.get("publication"),
         )
 
     @classmethod
@@ -454,7 +456,12 @@ class Manifest:
 
     def validate(self) -> None:
         """Validate the whole manifest. Raises ValueError on any problem."""
-        if self.version != SCHEMA_VERSION:
+        if self.publication is not None:
+            from .publication import validate_publication
+            if self.version != "1.1":
+                raise ValueError("Formal publication requires manifest version 1.1")
+            validate_publication(self.publication)
+        if self.version not in (SCHEMA_VERSION, "1.1"):
             raise ValueError(
                 f"Unsupported manifest version: {self.version} (expected {SCHEMA_VERSION})"
             )

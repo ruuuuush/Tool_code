@@ -257,7 +257,7 @@ def write_all_artifacts(result: ExportResult, write_report: bool = True) -> Arti
         append_log(result.fbx_path, f"FBX NOT written. Reasons: {result.errors or 'blocked by validation'}")
 
     # Markdown report.
-    if write_report:
+    if write_report or result.manifest.publication:
         try:
             written.report = write_markdown_report(result)
             append_log(result.fbx_path, f"report written: {written.report}")
@@ -268,6 +268,19 @@ def write_all_artifacts(result: ExportResult, write_report: bool = True) -> Arti
     result.manifest_path = written.manifest or ""
     result.report_path = written.report or ""
     result.errors.extend(written.errors())
+    if result.manifest.publication and result.fbx_written and written.manifest and written.report and not result.errors:
+        try:
+            from bridge.manifest import atomic_write_json
+            from bridge.publication import file_hash, ready_path
+            path = ready_path(written.manifest)
+            atomic_write_json({
+                "publish_id": result.manifest.publication["publish_id"],
+                "manifest_sha256": file_hash(written.manifest),
+                "report": os.path.basename(written.report), "report_sha256": file_hash(written.report),
+            }, path)
+            result.ready_path = path
+        except Exception as exc:
+            result.errors.append(f"发布就绪标识写入失败：{exc}")
     return written
 
 

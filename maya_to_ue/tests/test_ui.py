@@ -803,6 +803,30 @@ class TestVisualPolish(unittest.TestCase):
         self.win.show()
         _APP.processEvents()
 
+    def test_publication_controls_require_explicit_identity(self):
+        panel = self.win._export_panel
+        self.assertIsNone(panel.publication_request())
+        panel._include_rig.setChecked(True)
+        panel._publish.setChecked(True)
+        self.assertFalse(panel._include_rig.isChecked())
+        self.assertFalse(panel._include_rig.isEnabled())
+        with self.assertRaises(ValueError):
+            panel.publication_request()
+        panel._publish_project.setText("Demo")
+        panel._publish_asset.setText("Hero")
+        self.assertEqual(panel.publication_request().relative_path(), "Demo/Hero/v001")
+        panel._publish.setChecked(False)
+        self.assertTrue(panel._include_rig.isEnabled())
+
+    def test_publication_missing_receipt_does_not_report_success(self):
+        from test_publication import package
+        with tempfile.TemporaryDirectory() as directory:
+            _, path, _ = package(directory)
+            self.win._last_manifest_path = path
+            outcome = self.win._read_back_import_outcome()
+            self.assertEqual(outcome[0], "failed")
+            self.assertIn("回执", outcome[1])
+
     def test_theme_leaves_host_application_unchanged(self):
         from mtu_maya.ui import style
 

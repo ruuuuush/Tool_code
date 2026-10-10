@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import os
+import tempfile
 from typing import Any, Dict
 
 from .schema import (
@@ -39,12 +40,26 @@ def write_manifest(manifest: Manifest, path: str) -> str:
     if parent and not os.path.isdir(parent):
         os.makedirs(parent, exist_ok=True)
 
-    data = manifest.to_dict()
-    with open(abs_path, "w", encoding="utf-8") as fp:
-        json.dump(data, fp, indent=_JSON_INDENT, ensure_ascii=_JSON_ENSURE_ASCII)
-        fp.write("\n")
-
+    atomic_write_json(manifest.to_dict(), abs_path)
     return abs_path
+
+
+def atomic_write_json(data, path: str) -> str:
+    path = os.path.abspath(path)
+    parent = os.path.dirname(path)
+    os.makedirs(parent, exist_ok=True)
+    descriptor, temporary = tempfile.mkstemp(prefix=".mtu-", suffix=".json", dir=parent)
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
+            json.dump(data, stream, indent=_JSON_INDENT, ensure_ascii=_JSON_ENSURE_ASCII)
+            stream.write("\n")
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary, path)
+    finally:
+        if os.path.exists(temporary):
+            os.remove(temporary)
+    return path
 
 
 def read_manifest(path: str) -> Manifest:

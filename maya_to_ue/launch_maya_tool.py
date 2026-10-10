@@ -27,7 +27,7 @@ import sys
 # Packages that make up the tool. Everything under these names is dropped
 # from the module cache on reload, which is what makes edits take effect
 # without restarting Maya.
-_TOOL_PACKAGES = ("mtu_maya", "bridge")
+_TOOL_PACKAGES = ("mtu_maya", "bridge", "tool_version")
 
 
 def _ensure_repo_on_path() -> str:

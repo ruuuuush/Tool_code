@@ -20,6 +20,8 @@ import os
 from dataclasses import dataclass, field, replace
 from typing import List, Optional, Set
 
+from tool_version import VERSION
+from bridge.publication import PublicationRequest, data_hash, file_hash, rules_hash
 from bridge.schema import (
     Clip,
     Manifest,
@@ -69,6 +71,7 @@ class ExportRequest:
     fbx_preset: Optional[FBXExportPreset] = None
     settings: Optional[PipelineSettings] = None
     skipped_checks: Set[str] = field(default_factory=set)
+    publication: Optional[PublicationRequest] = None
 
 
 # ---------------------------------------------------------------------------
@@ -97,6 +100,7 @@ class ExportResult:
     report_path: str = ""
     # 本次导出执行的抽稀结果；档位为 off 或被阻断时为 None。
     thinning: "Optional[ThinningResult]" = None
+    ready_path: str = ""
 
     def __post_init__(self):
         if self.errors is None:
@@ -104,7 +108,9 @@ class ExportResult:
 
     def is_complete(self) -> bool:
         """True only when both the FBX and its manifest reached disk."""
-        return bool(self.fbx_written and self.manifest_path)
+        return bool(self.fbx_written and self.manifest_path and (
+            not (self.manifest and self.manifest.publication) or self.ready_path
+        ))
 
 
 # ---------------------------------------------------------------------------
@@ -678,6 +684,18 @@ def export_animation(req: ExportRequest) -> ExportResult:
     so the UI can show the validation report.
     """
     errors: List[str] = []
+    publication = req.publication
+    if publication is not None:
+        publication.validate()
+        if req.skipped_checks:
+            raise ValueError("正式发布不允许跳过任何检查")
+        if req.include_rig or req.create_skeleton_if_missing or not req.ue_skeleton_path:
+            raise ValueError("正式发布只支持指定已有 Skeleton 的动画")
+        if not req.clips or any(c.end <= c.start for c in req.clips):
+            raise ValueError("正式发布片段必须有有效时长")
+        directory = os.path.join(os.path.dirname(os.path.abspath(req.fbx_path)), publication.relative_path())
+        req = replace(req, fbx_path=os.path.join(directory, os.path.basename(req.fbx_path)))
+        os.makedirs(directory, exist_ok=False)
 
     # 1. Build context from the live scene. Keep the original request intact:
     # first-delivery fields must reach both validation and manifest generation.
@@ -698,7 +716,7 @@ def export_animation(req: ExportRequest) -> ExportResult:
     fbx_preset = req.fbx_preset or FBXExportPreset()
 
     manifest = Manifest.new(
-        tool_version="0.1.0",
+        tool_version=VERSION,
         source=Source(
             maya_scene=ctx.scene_name,
             maya_version=_maya_version_str(),
@@ -731,6 +749,8 @@ def export_animation(req: ExportRequest) -> ExportResult:
     fbx_written = False
     thinning: Optional[ThinningResult] = None
 
+    if publication is not None and not can_export:
+        raise ValueError("正式发布被实时检查阻止")
     if can_export:
         try:
             if not maya_utils.ensure_fbx_plugin():
@@ -766,6 +786,24 @@ def export_animation(req: ExportRequest) -> ExportResult:
         except Exception as exc:
             errors.append(f"FBX 导出出错（{type(exc).__name__}）：{exc}")
             fbx_written = False
+
+    if publication is not None and fbx_written:
+        import uuid
+        from dataclasses import asdict
+        root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        parameters = {"pipeline": asdict(settings), "fbx": asdict(fbx_preset), "thinning": req.thinning_level}
+        bones = sorted({path.rsplit("|", 1)[-1].rsplit(":", 1)[-1] for path in ctx.joints})
+        manifest.version = "1.1"
+        manifest.tool_version = VERSION
+        manifest.publication = {
+            "version": 1, "publish_id": uuid.uuid4().hex,
+            "project": publication.project, "asset": publication.asset, "revision": publication.version,
+            "fbx_sha256": file_hash(req.fbx_path), "fbx_size": os.path.getsize(req.fbx_path),
+            "rules_sha256": rules_hash(root), "settings": parameters,
+            "settings_sha256": data_hash(parameters), "required_bones": bones,
+            "required_checks": sorted(result.check_id for result in report.results),
+        }
+        manifest.validate()
 
     return ExportResult(
         manifest=manifest,

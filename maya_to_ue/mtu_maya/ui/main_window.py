@@ -817,6 +817,26 @@ class ExportPanel(QtWidgets.QWidget):
 
         layout.addLayout(form)
 
+        self._publish = T.CheckBox("正式发布（已有 Skeleton；不可覆盖）")
+        self._publish.setToolTip("全部检查必须执行；项目标识必须与 UE 项目名相同。")
+        layout.addWidget(self._publish)
+        self._publish_fields = QtWidgets.QWidget()
+        fields = QtWidgets.QHBoxLayout(self._publish_fields)
+        fields.setContentsMargins(0, 0, 0, 0)
+        self._publish_project = QtWidgets.QLineEdit()
+        self._publish_project.setPlaceholderText("UE 项目名")
+        self._publish_asset = QtWidgets.QLineEdit()
+        self._publish_asset.setPlaceholderText("资产标识，如 Hero")
+        self._publish_version = QtWidgets.QSpinBox()
+        self._publish_version.setRange(1, 999999)
+        self._publish_version.setPrefix("版本 ")
+        for control in (self._publish_project, self._publish_asset, self._publish_version):
+            fields.addWidget(control)
+        layout.addWidget(self._publish_fields)
+        self._publish_fields.setVisible(False)
+        self._publish.toggled.connect(self._publish_fields.setVisible)
+        self._publish.toggled.connect(self._on_publish_toggled)
+
         # 导出动作只有一个入口，在第③步检查通过之后——这一页只管填设置。
         self._gate_open = True
 
@@ -843,6 +863,21 @@ class ExportPanel(QtWidgets.QWidget):
         # 曾经放在本面板里，等导出按钮挪到检查步之后，动作和结果就分到了
         # 两页上，点完导出什么也看不见。
         layout.addStretch()
+
+    def _on_publish_toggled(self, enabled):
+        if enabled:
+            self._include_rig.setChecked(False)
+        self._include_rig.setEnabled(not enabled)
+        self._overwrite.setEnabled(not enabled)
+
+    def publication_request(self):
+        if not self._publish.isChecked():
+            return None
+        from bridge.publication import PublicationRequest
+        request = PublicationRequest(self._publish_project.text().strip(), self._publish_asset.text().strip(),
+                                     self._publish_version.value())
+        request.validate()
+        return request
 
     def set_status(self, text: str):
         self._status.setText(text)
@@ -1322,10 +1357,22 @@ class MainWindow(QtWidgets.QMainWindow):
         """
         if not self._last_manifest_path:
             return None
+        manifest = None
         try:
             from bridge.manifest import read_manifest
-            return format_import_outcome(read_manifest(self._last_manifest_path).result)
+            manifest = read_manifest(self._last_manifest_path)
+            if manifest.publication:
+                from bridge.publication import file_hash, read_json, receipt_path
+                from bridge.schema import ImportResult
+                receipt = read_json(receipt_path(self._last_manifest_path))
+                if (receipt.get("publish_id") != manifest.publication["publish_id"]
+                        or receipt.get("manifest_sha256") != file_hash(self._last_manifest_path)):
+                    return ("failed", "验收回执与本次发布不匹配")
+                return format_import_outcome(ImportResult.from_dict(receipt["result"]))
+            return format_import_outcome(manifest.result)
         except Exception:
+            if manifest is not None and manifest.publication:
+                return ("failed", "未取得有效验收回执：不能确认正式发布成功")
             return None
 
     def _on_push_finished(self, result):
@@ -1748,6 +1795,9 @@ class MainWindow(QtWidgets.QMainWindow):
             QtWidgets.QMessageBox.warning(self, S.MSG_NO_PRESET_TITLE, S.MSG_NO_PRESET)
             return
 
+        if self._export_panel._publish.isChecked() and self._check_panel.skipped_ids():
+            QtWidgets.QMessageBox.warning(self, "正式发布被阻止", "正式发布必须勾选并执行全部检查。")
+            return
         self._on_run_checks()
         report = getattr(self, "_last_report", None)
         if report is None:
@@ -1805,6 +1855,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 settings=self._config.settings,
                 fbx_preset=self._config.fbx_preset,
                 skipped_checks=self._check_panel.skipped_ids(),
+                publication=self._export_panel.publication_request(),
             )
             result = export_animation(req)
             write_all_artifacts(result, write_report=self._config.settings.write_markdown_report)
