@@ -1,0 +1,10 @@
+node_modules/
+/lib/
+*.log
+*.map
+03_local/
+.DS_Store
+Thumbs.db
+
+
+dist/
