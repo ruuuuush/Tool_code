@@ -7994,6 +7994,11 @@ var css = xterm_default + "\n" + [
   ".dsh-wt_iconCell:hover{background:var(--dsw-alias-fill-l1,rgba(255,255,255,.05));border-color:var(--dsw-alias-border-l2,#3a4150)}",
   ".dsh-wt_iconCell[data-on=true]{background:var(--dsw-alias-fill-l1,rgba(255,255,255,.08));border-color:var(--dsw-alias-state-accent-primary,#4f8ef7)}",
   // 用量 dock：侧栏底部一条，余额 + 本会话输出 token + 刷新
+  // 配置备份：设置菜单里的三个按钮
+  ".dsh-wt_backupRow{display:flex;gap:6px;flex-wrap:wrap;padding:0 2px 6px}",
+  ".dsh-wt_backupBtn{flex:1;min-width:92px;padding:4px 8px;border:1px solid var(--dsw-alias-border-l2,#3a4150);border-radius:7px;background:transparent;color:var(--dsw-alias-label-secondary,#9aa4b2);font:inherit;font-size:12px;line-height:17px;cursor:pointer;transition:background .15s ease,color .15s ease}",
+  ".dsh-wt_backupBtn:hover:not(:disabled){background:var(--dsw-alias-fill-l1,rgba(255,255,255,.06));color:var(--dsw-alias-label-primary,#e6e8eb)}",
+  ".dsh-wt_backupBtn:disabled{opacity:.5;cursor:default}",
   ".dsh-wt_usage{display:flex;align-items:center;gap:6px;margin:6px 2px 2px;padding:5px 8px;border-radius:8px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);font-size:11px;line-height:16px;color:var(--dsw-alias-label-secondary,#9aa4b2);user-select:none}",
   ".dsh-wt_usageIcon{flex:none;font-size:10px;color:var(--dsw-alias-state-accent-primary,#4f8ef7)}",
   ".dsh-wt_usageBal{flex:none;font-variant-numeric:tabular-nums;color:var(--dsw-alias-label-primary,#e6e8eb)}",
@@ -8666,6 +8671,16 @@ var zh = {
   "usage.refreshHint": "\u70B9\u51FB \u27F3 \u5237\u65B0",
   "usage.updated": "\u66F4\u65B0\u4E8E",
   "usage.unavailable": "\u4E0D\u53EF\u7528",
+  "backup.title": "\u914D\u7F6E\u5907\u4EFD",
+  "backup.export": "\u5BFC\u51FA\u914D\u7F6E",
+  "backup.exportMedia": "\u5BFC\u51FA\uFF08\u542B\u5A92\u4F53\uFF09",
+  "backup.import": "\u5BFC\u5165\u914D\u7F6E",
+  "backup.exportHint": "\u53EA\u5BFC\u51FA\u9879\u76EE / \u5E03\u5C40 / \u89C6\u56FE\uFF08\u51E0\u5341 KB\uFF0C\u9002\u5408\u653E\u8FDB Git\uFF09",
+  "backup.exportMediaHint": "\u8FDE\u540C\u80CC\u666F\u56FE\u7247\u548C\u89C6\u9891\u4E00\u8D77\u5BFC\u51FA\uFF0C\u6587\u4EF6\u4F1A\u5927\u5F88\u591A",
+  "backup.importHint": "\u9009\u62E9\u4E4B\u524D\u5BFC\u51FA\u7684 JSON\uFF0C\u8986\u76D6\u5F53\u524D\u914D\u7F6E\u5E76\u5237\u65B0",
+  "backup.exported": "\u5DF2\u5BFC\u51FA {size}\uFF08\u542B {media} \u4E2A\u5A92\u4F53\uFF09",
+  "backup.imported": "\u5DF2\u5BFC\u5165 {local} \u9879\u914D\u7F6E\u3001{media} \u4E2A\u5A92\u4F53\uFF0C\u5373\u5C06\u5237\u65B0\u2026",
+  "backup.failed": "\u64CD\u4F5C\u5931\u8D25\uFF0C\u8BF7\u68C0\u67E5\u6587\u4EF6\u540E\u91CD\u8BD5",
   "empty": "\u6682\u65E0\u9879\u76EE",
   "update.badgeTitle": "\u6709\u65B0\u7248\u672C\u53EF\u7528",
   "update.available": "\u65B0\u7248\u672C\u53EF\u7528",
@@ -8926,6 +8941,16 @@ var en = {
   "usage.refreshHint": "Click \u27F3 to refresh",
   "usage.updated": "Updated",
   "usage.unavailable": "n/a",
+  "backup.title": "Config backup",
+  "backup.export": "Export",
+  "backup.exportMedia": "Export + media",
+  "backup.import": "Import",
+  "backup.exportHint": "Projects / layouts / view only (a few KB \u2014 Git friendly)",
+  "backup.exportMediaHint": "Include background images and videos (much larger file)",
+  "backup.importHint": "Pick a previously exported JSON; it replaces the current config and reloads",
+  "backup.exported": "Exported {size} ({media} media items)",
+  "backup.imported": "Imported {local} config entries and {media} media items \u2014 reloading\u2026",
+  "backup.failed": "Failed \u2014 check the file and try again",
   "empty": "No projects yet",
   "update.badgeTitle": "New version available",
   "update.available": "New version available",
@@ -20875,6 +20900,26 @@ var photoStore = {
         reject(tx.error);
       };
     });
+  },
+  /** 原样写入一条记录（配置导入用；保留 id / order，使「当前背景」的引用能对上） */
+  async put(rec) {
+    const db = await openDb();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE, "readwrite");
+      tx.objectStore(STORE).put(rec, rec.id);
+      tx.oncomplete = () => {
+        db.close();
+        resolve();
+      };
+      tx.onerror = () => {
+        db.close();
+        reject(tx.error);
+      };
+      tx.onabort = () => {
+        db.close();
+        reject(tx.error);
+      };
+    });
   }
 };
 
@@ -21018,6 +21063,97 @@ function UsageDock({ ctx, sessionId, stats, t }) {
       }
     )
   ] });
+}
+
+// src/client/stateBackup.ts
+var STATE_KEYS = [
+  "dsh.worktable.view.v1",
+  "dsh.worktable.projects.v1",
+  "dsh.worktable.consoleBgPhoto.v1"
+];
+var CHUNK = 32768;
+function toB64(buf) {
+  const bytes = new Uint8Array(buf);
+  let s = "";
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    s += String.fromCharCode.apply(null, Array.from(bytes.subarray(i, i + CHUNK)));
+  }
+  return btoa(s);
+}
+function fromB64(b64) {
+  const bin = atob(b64);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+async function exportState(includeMedia, appVersion) {
+  const local = {};
+  for (const k of STATE_KEYS) {
+    try {
+      local[k] = localStorage.getItem(k);
+    } catch {
+      local[k] = null;
+    }
+  }
+  const media = [];
+  let mediaBytes = 0;
+  if (includeMedia) {
+    const recs = await photoStore.list();
+    for (const r of recs) {
+      const buf = await r.blob.arrayBuffer();
+      mediaBytes += buf.byteLength;
+      media.push({ id: r.id, createdAt: r.createdAt, kind: r.kind, order: r.order, type: r.blob.type || "", dataB64: toB64(buf) });
+    }
+  }
+  const file = {
+    format: "dsh-worktable-state",
+    version: 1,
+    exportedAt: (/* @__PURE__ */ new Date()).toISOString(),
+    appVersion,
+    local,
+    mediaIncluded: includeMedia,
+    media
+  };
+  const blob = new Blob([JSON.stringify(file)], { type: "application/json" });
+  const name = "dsh-worktable-state-" + (/* @__PURE__ */ new Date()).toISOString().slice(0, 10) + ".json";
+  return { blob, name, bytes: blob.size, mediaCount: media.length, mediaBytes };
+}
+async function importState(text2, opts) {
+  const file = JSON.parse(text2);
+  if (!file || file.format !== "dsh-worktable-state") throw new Error("stateBackup: \u6587\u4EF6\u683C\u5F0F\u4E0D\u7B26");
+  let localN = 0;
+  for (const [k, v] of Object.entries(file.local ?? {})) {
+    if (!STATE_KEYS.includes(k)) continue;
+    try {
+      if (v === null || v === void 0) localStorage.removeItem(k);
+      else {
+        localStorage.setItem(k, v);
+        localN++;
+      }
+    } catch {
+    }
+  }
+  let mediaN = 0;
+  let skipped = 0;
+  if (opts.withMedia && Array.isArray(file.media)) {
+    for (const m of file.media) {
+      try {
+        const bytes = fromB64(m.dataB64);
+        const blob = new Blob([bytes], { type: m.type || (m.kind === "video" ? "video/mp4" : "image/png") });
+        const rec = { id: m.id, createdAt: m.createdAt, kind: m.kind, blob, order: m.order };
+        await photoStore.put(rec);
+        mediaN++;
+      } catch {
+        skipped++;
+      }
+    }
+  }
+  return { local: localN, media: mediaN, skipped };
+}
+function fmtSize(bytes) {
+  if (bytes >= 1048576) return (bytes / 1048576).toFixed(1) + " MB";
+  if (bytes >= 1024) return (bytes / 1024).toFixed(0) + " KB";
+  return bytes + " B";
 }
 
 // src/client/index.tsx
@@ -22075,6 +22211,8 @@ function WorktableSection(props) {
     mountedRef.current = false;
   }, []);
   const [iconPick, setIconPick] = (0, import_react4.useState)(null);
+  const [backupBusy, setBackupBusy] = (0, import_react4.useState)("idle");
+  const [backupMsg, setBackupMsg] = (0, import_react4.useState)("");
   const [bindPick, setBindPick] = (0, import_react4.useState)(null);
   const [bindGroups, setBindGroups] = (0, import_react4.useState)([]);
   const [bindListOpen, setBindListOpen] = (0, import_react4.useState)(false);
@@ -23231,6 +23369,59 @@ function WorktableSection(props) {
     else removeProject(r.id);
     setRequestDelete(null);
   };
+  const onExportState = async (withMedia) => {
+    setBackupBusy("export");
+    setBackupMsg("");
+    try {
+      const res = await exportState(withMedia, LOCAL_VERSION2);
+      const url = URL.createObjectURL(res.blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = res.name;
+      a.rel = "noopener";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.setTimeout(() => {
+        try {
+          URL.revokeObjectURL(url);
+        } catch {
+        }
+      }, 2e4);
+      setBackupMsg(t("backup.exported", { size: fmtSize(res.bytes), media: String(res.mediaCount) }));
+    } catch {
+      setBackupMsg(t("backup.failed"));
+    } finally {
+      setBackupBusy("idle");
+    }
+  };
+  const onImportState = () => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "application/json,.json";
+    input.onchange = async () => {
+      const file = input.files?.[0];
+      if (!file) return;
+      setBackupBusy("import");
+      setBackupMsg("");
+      try {
+        const text2 = await file.text();
+        const r = await importState(text2, { withMedia: true });
+        setBackupMsg(t("backup.imported", { local: String(r.local), media: String(r.media) }));
+        window.setTimeout(() => {
+          try {
+            location.reload();
+          } catch {
+          }
+        }, 1500);
+      } catch {
+        setBackupMsg(t("backup.failed"));
+      } finally {
+        setBackupBusy("idle");
+      }
+    };
+    input.click();
+  };
   const openIconPick = (kind, id, anchor) => {
     const r = anchor.getBoundingClientRect();
     const x = Math.min(r.right + 8, Math.max(16, window.innerWidth - 284));
@@ -23783,6 +23974,44 @@ function WorktableSection(props) {
           }
         )
       ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "dsh-wt_menuSep" }),
+      /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "dsh-wt_manageHead", children: /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("span", { className: "dsh-wt_manageTitle", children: t("backup.title") }) }),
+      /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "dsh-wt_backupRow", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
+          "button",
+          {
+            type: "button",
+            className: "dsh-wt_backupBtn",
+            disabled: backupBusy !== "idle",
+            title: t("backup.exportHint"),
+            onClick: () => void onExportState(false),
+            children: t("backup.export")
+          }
+        ),
+        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
+          "button",
+          {
+            type: "button",
+            className: "dsh-wt_backupBtn",
+            disabled: backupBusy !== "idle",
+            title: t("backup.exportMediaHint"),
+            onClick: () => void onExportState(true),
+            children: t("backup.exportMedia")
+          }
+        ),
+        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
+          "button",
+          {
+            type: "button",
+            className: "dsh-wt_backupBtn",
+            disabled: backupBusy !== "idle",
+            title: t("backup.importHint"),
+            onClick: onImportState,
+            children: t("backup.import")
+          }
+        )
+      ] }),
+      backupMsg && /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "dsh-wt_updateHint", children: backupMsg }),
       /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "dsh-wt_menuSep" }),
       /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "dsh-wt_manageHead", children: /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("span", { className: "dsh-wt_manageTitle", children: t("manage.title") }) }),
       effectiveOrder.map((id) => {

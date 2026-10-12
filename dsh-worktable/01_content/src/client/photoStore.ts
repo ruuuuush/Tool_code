@@ -125,4 +125,15 @@ export const photoStore = {
       tx.onabort = () => { db.close(); reject(tx.error) }
     })
   },
+  /** 原样写入一条记录（配置导入用；保留 id / order，使「当前背景」的引用能对上） */
+  async put(rec: PhotoRecord): Promise<void> {
+    const db = await openDb()
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE, 'readwrite')
+      tx.objectStore(STORE).put(rec, rec.id)
+      tx.oncomplete = () => { db.close(); resolve() }
+      tx.onerror = () => { db.close(); reject(tx.error) }
+      tx.onabort = () => { db.close(); reject(tx.error) }
+    })
+  },
 }

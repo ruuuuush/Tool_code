@@ -242,6 +242,11 @@ export const css = xtermCss + '\n' + [
   '.dsh-wt_iconCell:hover{background:var(--dsw-alias-fill-l1,rgba(255,255,255,.05));border-color:var(--dsw-alias-border-l2,#3a4150)}',
   '.dsh-wt_iconCell[data-on=true]{background:var(--dsw-alias-fill-l1,rgba(255,255,255,.08));border-color:var(--dsw-alias-state-accent-primary,#4f8ef7)}',
 // 用量 dock：侧栏底部一条，余额 + 本会话输出 token + 刷新
+// 配置备份：设置菜单里的三个按钮
+'.dsh-wt_backupRow{display:flex;gap:6px;flex-wrap:wrap;padding:0 2px 6px}',
+'.dsh-wt_backupBtn{flex:1;min-width:92px;padding:4px 8px;border:1px solid var(--dsw-alias-border-l2,#3a4150);border-radius:7px;background:transparent;color:var(--dsw-alias-label-secondary,#9aa4b2);font:inherit;font-size:12px;line-height:17px;cursor:pointer;transition:background .15s ease,color .15s ease}',
+'.dsh-wt_backupBtn:hover:not(:disabled){background:var(--dsw-alias-fill-l1,rgba(255,255,255,.06));color:var(--dsw-alias-label-primary,#e6e8eb)}',
+'.dsh-wt_backupBtn:disabled{opacity:.5;cursor:default}',
 '.dsh-wt_usage{display:flex;align-items:center;gap:6px;margin:6px 2px 2px;padding:5px 8px;border-radius:8px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);font-size:11px;line-height:16px;color:var(--dsw-alias-label-secondary,#9aa4b2);user-select:none}',
 '.dsh-wt_usageIcon{flex:none;font-size:10px;color:var(--dsw-alias-state-accent-primary,#4f8ef7)}',
 '.dsh-wt_usageBal{flex:none;font-variant-numeric:tabular-nums;color:var(--dsw-alias-label-primary,#e6e8eb)}',

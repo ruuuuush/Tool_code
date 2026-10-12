@@ -12,6 +12,7 @@ import { photoStore, kindOf } from './photoStore'
 import { DEFAULT_BG_SVG, b64ToBlob } from './defaultBg'
 import { WAVE_BG_B64 } from './waveBg'
 import { UsageDock } from './usage'
+import { exportState, importState, fmtSize } from './stateBackup'
 
 /**
  * dsh-worktable 客户端（v2）：侧边栏底部「工作台」区块。
@@ -1168,6 +1169,9 @@ function WorktableSection(props: any) {
   useEffect(() => () => { mountedRef.current = false }, [])
   /** 图标选择器：kind + 目标 id + 弹窗锚点坐标（fixed 定位） */
   const [iconPick, setIconPick] = useState<{ kind: 'layout' | 'shortcut' | 'project'; id: string; x: number; y: number } | null>(null)
+  // 配置备份：导出 / 导入（界面配置进 Git）
+  const [backupBusy, setBackupBusy] = useState<'idle' | 'export' | 'import'>('idle')
+  const [backupMsg, setBackupMsg] = useState('')
   /** 对话绑定弹窗：项目 id + 锚点坐标；bindGroups = 打开时抓取的会话分组；
    *  bindListOpen = 右侧对话列表弹层（点「绑定对话」行弹出） */
   const [bindPick, setBindPick] = useState<{ id: string; x: number; y: number } | null>(null)
@@ -2317,6 +2321,37 @@ function buildCustomLayoutPrompt(req: string): string {
     setRequestDelete(null)
   }
 
+  // ── 配置备份：导出 / 导入（界面配置进 Git，带到另一台机器） ──
+  const onExportState = async (withMedia: boolean) => {
+    setBackupBusy('export'); setBackupMsg('')
+    try {
+      const res = await exportState(withMedia, LOCAL_VERSION)
+      const url = URL.createObjectURL(res.blob)
+      const a = document.createElement('a')
+      a.href = url; a.download = res.name; a.rel = 'noopener'
+      document.body.appendChild(a); a.click(); a.remove()
+      window.setTimeout(() => { try { URL.revokeObjectURL(url) } catch {} }, 20_000)
+      setBackupMsg(t('backup.exported', { size: fmtSize(res.bytes), media: String(res.mediaCount) }))
+    } catch { setBackupMsg(t('backup.failed')) } finally { setBackupBusy('idle') }
+  }
+  const onImportState = () => {
+    const input = document.createElement('input')
+    input.type = 'file'
+    input.accept = 'application/json,.json'
+    input.onchange = async () => {
+      const file = input.files?.[0]
+      if (!file) return
+      setBackupBusy('import'); setBackupMsg('')
+      try {
+        const text = await file.text()
+        const r = await importState(text, { withMedia: true })
+        setBackupMsg(t('backup.imported', { local: String(r.local), media: String(r.media) }))
+        window.setTimeout(() => { try { location.reload() } catch {} }, 1500)
+      } catch { setBackupMsg(t('backup.failed')) } finally { setBackupBusy('idle') }
+    }
+    input.click()
+  }
+
   // ── 图标选择器（布局 / 快捷方式 / 入驻项目的侧栏 emoji 点击可换） ──
   // anchor：DOM 锚点元素（自己卡片里的 icon 元素或事件 currentTarget）
   const openIconPick = (kind: 'layout' | 'shortcut' | 'project', id: string, anchor: HTMLElement) => {
@@ -2803,6 +2838,20 @@ function buildCustomLayoutPrompt(req: string): string {
             <button type="button" className="dsh-wt_sortBtn" data-on={view.orderBy === 'recent'}
               onClick={() => persistView({ orderBy: 'recent' })}>{t('sort.recent')}</button>
           </div>
+          <div className="dsh-wt_menuSep" />
+          {/* 配置备份：把界面配置导出成 JSON，便于放进 Git 带到另一台机器 */}
+          <div className="dsh-wt_manageHead">
+            <span className="dsh-wt_manageTitle">{t('backup.title')}</span>
+          </div>
+          <div className="dsh-wt_backupRow">
+            <button type="button" className="dsh-wt_backupBtn" disabled={backupBusy !== 'idle'}
+              title={t('backup.exportHint')} onClick={() => void onExportState(false)}>{t('backup.export')}</button>
+            <button type="button" className="dsh-wt_backupBtn" disabled={backupBusy !== 'idle'}
+              title={t('backup.exportMediaHint')} onClick={() => void onExportState(true)}>{t('backup.exportMedia')}</button>
+            <button type="button" className="dsh-wt_backupBtn" disabled={backupBusy !== 'idle'}
+              title={t('backup.importHint')} onClick={onImportState}>{t('backup.import')}</button>
+          </div>
+          {backupMsg && <div className="dsh-wt_updateHint">{backupMsg}</div>}
           <div className="dsh-wt_menuSep" />
           <div className="dsh-wt_manageHead">
             <span className="dsh-wt_manageTitle">{t('manage.title')}</span>
