@@ -23,6 +23,9 @@ htmlcov/
 
 # === 生成产物 ===
 motion_pipeline/out/
+maya_to_ue/dist/
+node_modules/
+fbx_preview_check.png
 *.log
 
 # === Maya 临时文件 ===

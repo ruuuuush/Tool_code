@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>动画预览</title>
+  <link rel="stylesheet" href="/fbx_preview.css">
+  <script type="importmap">{"imports":{"three":"/node_modules/three/build/three.module.js","three/addons/":"/node_modules/three/examples/jsm/"}}</script>
+</head>
+<body>
+  <header>
+    <div class="brand"><span class="brand-mark">F</span><strong>动画预览</strong><span class="subtle">FBX / 本地</span></div>
+    <div class="actions"><button id="pick-files">添加文件</button><button id="pick-folder">选择文件夹</button></div>
+    <input id="files" type="file" accept=".fbx,.png,.jpg,.jpeg,.tga,.bmp" multiple hidden>
+    <input id="folder" type="file" webkitdirectory multiple hidden>
+  </header>
+  <div class="workspace">
+    <aside>
+      <div class="sidebar-heading"><strong>动画文件</strong><span id="file-count">0</span></div>
+      <input id="search" type="search" placeholder="搜索文件名…" aria-label="搜索文件名">
+      <div id="file-list" class="file-list"></div>
+      <div class="sidebar-footer">文件仅在本机读取，不上传。<br>可选整个文件夹，也可拖入 FBX。</div>
+    </aside>
+    <main>
+      <div class="toolbar">
+        <div id="current-name">未选择文件</div>
+        <div class="view-options">
+          <label><input id="show-mesh" type="checkbox" checked>模型</label>
+          <label><input id="show-materials" type="checkbox" checked>材质</label>
+          <label><input id="show-bones" type="checkbox">骨骼</label>
+          <label><input id="show-grid" type="checkbox" checked>网格</label>
+          <label>坐标 <select id="up-axis"><option value="y">Y 向上</option><option value="z">Z 向上</option></select></label>
+          <button id="frame">居中 <kbd>F</kbd></button>
+        </div>
+      </div>
+      <div id="viewport">
+        <canvas id="canvas" aria-label="三维动画视口"></canvas>
+        <div id="empty"><div class="empty-icon">FBX</div><h1>拖入动画文件</h1><p>或使用右上角「选择文件夹」</p><p class="path">Z:\inner01\shanghai\S1\artist\artWorks\anim_data_new2_pipeline\fbx\preview\lod2</p><button id="empty-pick">选择 FBX</button></div>
+        <div id="loading" hidden>正在读取…</div>
+        <div class="viewport-hint">左键旋转 · 右键平移 · 滚轮缩放</div>
+        <div id="model-info"></div>
+      </div>
+      <section class="transport">
+        <div class="timeline-row"><span id="time-current">0.00s</span><input id="timeline" type="range" min="0" max="1" step="0.001" value="0" aria-label="动画时间轴" disabled><span id="time-total">0.00s</span></div>
+        <div class="transport-row">
+          <div class="playback"><button id="previous-file" title="上一条动画（PageUp）" disabled>上一条</button><button id="next-file" title="下一条动画（PageDown）" disabled>下一条</button><button id="restart" title="回到开头" disabled>回到开头</button><button id="previous-frame" title="上一帧（左方向键）" disabled>上一帧</button><button id="play" disabled>播放</button><button id="next-frame" title="下一帧（右方向键）" disabled>下一帧</button><label><input id="loop" type="checkbox" checked>循环</label><label>速度 <select id="speed"><option value="0.25">0.25×</option><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="1.5">1.5×</option><option value="2">2×</option></select></label></div>
+          <label class="clip-label">动画片段 <select id="clips" disabled><option>无动画</option></select></label>
+        </div>
+        <div class="transport-row">
+          <span id="frame-number">帧 0 / 0</span>
+          <label title="预览采样帧率，不代表 FBX 源帧率">逐帧采样 <select id="fps"><option value="24">24 fps</option><option value="25">25 fps</option><option value="30" selected>30 fps</option><option value="60">60 fps</option></select></label>
+        </div>
+      </section>
+      <footer><span id="status" role="status">就绪 · 选择 FBX 文件开始</span><span>空格 播放 · ← → 逐帧 · PgUp / PgDn 切动作</span></footer>
+    </main>
+  </div>
+  <script type="module" src="/fbx_preview.js"></script>
+</body>
+</html>

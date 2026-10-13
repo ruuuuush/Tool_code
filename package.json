@@ -1,0 +1,15 @@
+{
+  "name": "fbx-animation-preview",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "start": "node fbx_preview_server.cjs",
+    "test": "node --test fbx_preview.test.cjs"
+  },
+  "dependencies": {
+    "three": "0.180.0"
+  },
+  "devDependencies": {
+    "playwright": "1.55.1"
+  }
+}
