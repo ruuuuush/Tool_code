@@ -23,7 +23,7 @@ test('local FBX viewer loads animation, scrubs and switches files', { timeout: 1
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));
     await page.goto('http://127.0.0.1:18765');
-    await page.locator('#files').setInputFiles(path.join(__dirname, 'walk.fbx'));
+    await page.locator('#files').setInputFiles(path.join(__dirname, '..', 'walk.fbx'));
     await page.waitForFunction(() => !document.getElementById('play').disabled, { timeout: 60000 });
     assert.equal(await page.locator('#current-name').textContent(), 'walk.fbx');
     assert.equal(await page.locator('#file-count').textContent(), '1');
@@ -55,7 +55,7 @@ test('local FBX viewer loads animation, scrubs and switches files', { timeout: 1
     assert.equal(await page.locator('.file-item').count(), 0);
     await page.locator('#search').fill('');
     assert.equal(await page.locator('.file-item').count(), 1);
-    await page.locator('#files').setInputFiles(path.join(__dirname, 'Standard Walk.fbx'));
+    await page.locator('#files').setInputFiles(path.join(__dirname, '..', 'Standard Walk.fbx'));
     await page.locator('#previous-file').click();
     await page.waitForFunction(() => document.getElementById('current-name').textContent === 'Standard Walk.fbx' && document.getElementById('loading').hidden, { timeout: 60000 });
     assert.equal(await page.locator('#status').evaluate(node => node.classList.contains('error')), false);
